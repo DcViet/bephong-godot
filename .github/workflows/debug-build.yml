@@ -28,6 +28,8 @@ jobs:
   export-windows-debug:
     needs: smoke-test
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Cài Godot và export template
@@ -49,8 +51,19 @@ jobs:
           mkdir -p build
           godot --headless --path . --export-debug "Windows Desktop" build/BePhong.exe
           ls -la build
-      - uses: actions/upload-artifact@v4
-        with:
-          name: BePhong-windows-debug
-          path: build/
-          if-no-files-found: error
+      - name: Đóng gói
+        run: |
+          cd build && zip -q ../BePhong-windows-debug.zip *
+          ls -la ../BePhong-windows-debug.zip
+      - name: Đăng lên Release "debug-latest"
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          notes="Bản debug Windows dựng từ commit ${GITHUB_SHA::7}. Tự cập nhật mỗi lần push vào main."
+          if gh release view debug-latest >/dev/null 2>&1; then
+            gh release edit debug-latest --notes "$notes" --target "$GITHUB_SHA"
+          else
+            gh release create debug-latest --prerelease --title "Bản debug mới nhất" --notes "$notes" --target "$GITHUB_SHA"
+          fi
+          gh release upload debug-latest BePhong-windows-debug.zip --clobber
