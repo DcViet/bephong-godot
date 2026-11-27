@@ -10,23 +10,33 @@ signal tapped(kind: String, key: Variant)
 
 const TW := 96.0              # bề rộng một ô iso
 const TH := 48.0              # bề cao một ô iso (tỉ lệ 2:1)
-const MAP := 10.0             # đảo là hình vuông 10×10 ô (lưới), nhìn ra hình thoi
-const WORLD_W := 1000.0       # khung thế giới cần hiện vừa màn hình
-const WORLD_H := 560.0
-const WORLD_CY := 250.0       # tâm khung theo trục dọc (tọa độ thế giới)
+const MAP := 12.0             # đảo là hình vuông 12×12 ô (lưới), nhìn ra hình thoi
+const WORLD_W := 1180.0       # khung thế giới cần hiện vừa màn hình
+const WORLD_H := 700.0
+const WORLD_CY := 260.0       # tâm khung theo trục dọc (tọa độ thế giới)
 const COUNT := 2.4            # giây đếm ngược
 const FLIGHT := 9.0           # giây bay
-const PAD_SLOTS: Array = [Vector2(5.0, 5.0), Vector2(3.2, 6.8), Vector2(6.8, 3.2)]
+const PAD_SLOTS: Array = [Vector2(6.0, 6.0), Vector2(4.2, 7.8), Vector2(7.8, 4.2)]
 const PAD_SIZE := 1.6
 const PAD_H := 7.0
 const ROCKET_K := 1.9         # hệ số phóng to kích thước tàu (data.gd tính theo 720×400)
 
 # Vị trí công trình trên lưới (góc gx, gy và kích thước ô).
-const SHOP_AT := Rect2(0.9, 4.5, 1.4, 1.4)
-const WX_AT := Vector2(8.4, 4.7)
-const ASM_AT := Rect2(6.3, 0.7, 2.0, 1.6)
-const FUEL_AT: Array = [Vector2(7.9, 6.3), Vector2(8.6, 7.0), Vector2(7.2, 7.1)]
-const CTRL_AT := Rect2(1.9, 1.9, 1.8, 1.8)
+const SHOP_AT := Rect2(2.3, 5.2, 1.3, 1.3)
+const WX_AT := Vector2(9.3, 5.7)
+const ASM_AT := Rect2(6.6, 2.1, 2.0, 1.2)
+const FUEL_AT: Array = [Vector2(8.9, 7.3), Vector2(9.6, 8.0), Vector2(8.2, 8.1)]
+const CTRL_AT := Rect2(4.1, 4.1, 1.0, 1.0)
+
+# Ba giai đoạn đất (đồng tâm quanh ô giữa): bãi khởi điểm → quảng trường → toàn đảo.
+const CORE := Rect2(4, 4, 4, 4)
+const PLAZA := Rect2(2, 2, 8, 8)
+const FULL := Rect2(0, 0, 12, 12)
+# Kênh nước mặn chạy dọc hai bên đảo (tọa độ lưới), luôn còn lại như kênh thoát nước.
+const CHANNELS: Array = [
+	[Vector2(0.2, 9.8), Vector2(1.2, 8.2), Vector2(0.8, 6.0), Vector2(1.3, 3.8), Vector2(0.7, 1.4)],
+	[Vector2(11.6, 2.0), Vector2(10.9, 4.5), Vector2(11.3, 7.0), Vector2(10.8, 9.5), Vector2(11.7, 11.6)],
+]
 
 var desc: Dictionary = {}
 var running: bool = false
@@ -52,6 +62,12 @@ var _stars: Array = []
 var _clouds: Array = []
 var _bushes: Array = []
 var _flowers: Array = []
+var _swamp: Array = []        # cây cỏ đầm lầy, biến mất khi ô được cải tạo
+var _pools: Array = []
+var _egrets: Array = []
+var _chan_pts: Array = []
+var _fill_cache: Dictionary = {}
+var _fill_n := 0              # số ô đã san lấp trong đợt cải tạo đang chạy
 var _items: Array = []
 var _anchors: Array = []
 var _ox := 0.0
@@ -81,36 +97,133 @@ func _ready() -> void:
 	mouse_filter = Control.MOUSE_FILTER_STOP
 
 
-## Cây và bụi rải ở dải cỏ quanh quảng trường, tránh chỗ công trình.
+## Vùng đất theo giai đoạn (0 = bãi khởi điểm, 1 = quảng trường, 2 = toàn đảo).
+func _region(stage: int) -> Rect2:
+	return [CORE, PLAZA, FULL][clampi(stage, 0, 2)]
+
+
+func _land_stage() -> int:
+	return int(Game.s.land.stage)
+
+
+## Ô lưới (i, j) đã là đất cứng (hoặc đã san lấp xong trong đợt đang chạy)?
+func _tile_filled(i: int, j: int) -> bool:
+	if _region(_land_stage()).has_point(Vector2(i + 0.5, j + 0.5)):
+		return true
+	var land: Dictionary = Game.s.land
+	if int(land.left) > 0:
+		var info: Dictionary = _fill_info(int(land.target))
+		var k: Variant = info.idx.get(Vector2i(i, j), -1)
+		return int(k) >= 0 and int(k) < _fill_n
+	return false
+
+
+## Thứ tự san lấp các ô của một giai đoạn: từ trong ra ngoài.
+func _fill_info(target: int) -> Dictionary:
+	if _fill_cache.has(target):
+		return _fill_cache[target]
+	var outer := _region(target)
+	var inner := _region(target - 1)
+	var tiles: Array = []
+	for i in range(int(outer.position.x), int(outer.end.x)):
+		for j in range(int(outer.position.y), int(outer.end.y)):
+			if not inner.has_point(Vector2(i + 0.5, j + 0.5)):
+				tiles.append(Vector2i(i, j))
+	tiles.sort_custom(func(a: Vector2i, b: Vector2i) -> bool:
+		var da: float = maxf(absf(a.x + 0.5 - 6.0), absf(a.y + 0.5 - 6.0)) + (a.x + a.y) * 0.001
+		var db: float = maxf(absf(b.x + 0.5 - 6.0), absf(b.y + 0.5 - 6.0)) + (b.x + b.y) * 0.001
+		return da < db)
+	var idx := {}
+	for k in tiles.size():
+		idx[tiles[k]] = k
+	var info := {"tiles": tiles, "idx": idx}
+	_fill_cache[target] = info
+	return info
+
+
+## Đường cong Catmull-Rom qua các điểm (dùng vẽ kênh nước).
+func _smooth(pts: Array, per: int = 6) -> Array:
+	var out: Array = []
+	for i in pts.size() - 1:
+		var p0: Vector2 = pts[maxi(i - 1, 0)]
+		var p1: Vector2 = pts[i]
+		var p2: Vector2 = pts[i + 1]
+		var p3: Vector2 = pts[mini(i + 2, pts.size() - 1)]
+		for k in per:
+			var u := float(k) / per
+			out.append(0.5 * ((2.0 * p1) + (-p0 + p2) * u + (2.0 * p0 - 5.0 * p1 + 4.0 * p2 - p3) * u * u + (-p0 + 3.0 * p1 - 3.0 * p2 + p3) * u * u * u))
+	out.append(pts[pts.size() - 1])
+	return out
+
+
+func _near_channel(g: Vector2, r: float) -> bool:
+	for c in _chan_pts:
+		if (c as Vector2).distance_to(g) < r:
+			return true
+	return false
+
+
+## Cây và bụi xanh ở dải ngoài (Lô III), thực vật đầm lầy khắp đảo.
 func _make_scenery(rng: RandomNumberGenerator) -> void:
-	var core := Rect2(1.2, 1.2, 7.6, 7.6)
-	var avoid: Array = [Rect2(5.9, 0.1, 3.5, 2.8), Rect2(0.3, 3.9, 2.6, 2.7)]
+	for ch in CHANNELS:
+		for c in _smooth(ch, 8):
+			_chan_pts.append(c)
+	# Cây xanh / bụi chỉ mọc ở dải ngoài quảng trường và chỉ hiện sau khi cải tạo Lô III.
+	var guard := PLAZA.grow(0.25)
 	var tries := 0
-	while _bushes.size() < 62 and tries < 2000:
+	while _bushes.size() < 46 and tries < 3000:
 		tries += 1
 		var g := Vector2(rng.randf() * MAP, rng.randf() * MAP)
-		if core.has_point(g):
+		if guard.has_point(g) or _near_channel(g, 0.9):
 			continue
 		var bad := false
-		for a in avoid:
-			if (a as Rect2).has_point(g):
-				bad = true
 		for b in _bushes:
-			if (b.g as Vector2).distance_to(g) < 0.62:
+			if (b.g as Vector2).distance_to(g) < 0.7:
 				bad = true
 		if bad:
 			continue
-		# Phía trước (gần camera) chỉ bụi thấp để không che quảng trường; cây cao ở phía sau và hai bên.
+		# Phía trước (gần camera) chỉ bụi thấp để không che mặt bằng; cây cao ở phía sau và hai bên.
 		var depth: float = g.x + g.y
-		var tree: bool = rng.randf() < (0.55 if depth < 9.0 else (0.22 if depth < 13.0 else 0.0))
-		var hue: float = rng.randf()
-		var col := Color.html("#9fd13f").lerp(Color.html("#6fc24a"), hue)
+		var tree: bool = rng.randf() < (0.55 if depth < 12.0 else (0.22 if depth < 17.0 else 0.0))
+		var col := Color.html("#9fd13f").lerp(Color.html("#6fc24a"), rng.randf())
 		_bushes.append({"g": g, "tree": tree, "k": (0.62 + rng.randf() * 0.3) if tree else (0.6 + rng.randf() * 0.35), "col": col})
 	for i in 46:
 		var g2 := Vector2(rng.randf() * MAP, rng.randf() * MAP)
-		if core.has_point(g2):
+		if guard.has_point(g2) or _near_channel(g2, 0.7):
 			continue
 		_flowers.append(g2)
+	# Thực vật đầm lầy: lau sậy, đước, súng. Mọc khắp đảo trừ bãi khởi điểm.
+	var nogo := CORE.grow(0.35)
+	tries = 0
+	while _swamp.size() < 150 and tries < 4000:
+		tries += 1
+		var g3 := Vector2(rng.randf() * MAP, rng.randf() * MAP)
+		if nogo.has_point(g3):
+			continue
+		var close := false
+		for sw in _swamp:
+			if (sw.g as Vector2).distance_to(g3) < 0.5:
+				close = true
+		if close:
+			continue
+		var roll: float = rng.randf()
+		var kind := "reed" if roll < 0.6 else ("mangrove" if roll < 0.86 else "lily")
+		_swamp.append({"g": g3, "t": kind, "k": 0.7 + rng.randf() * 0.5, "ph": rng.randf() * 6.0})
+	# Vũng nước đọng.
+	tries = 0
+	var pool_nogo := CORE.grow(0.7)
+	while _pools.size() < 16 and tries < 800:
+		tries += 1
+		var g4 := Vector2(rng.randf() * MAP, rng.randf() * MAP)
+		if pool_nogo.has_point(g4):
+			continue
+		var apart := true
+		for pl in _pools:
+			if (pl.g as Vector2).distance_to(g4) < 1.8:
+				apart = false
+		if apart:
+			_pools.append({"g": g4, "rx": 0.5 + rng.randf() * 0.7, "ry": 0.4 + rng.randf() * 0.6})
+	_egrets = [Vector2(2.6, 3.4), Vector2(9.4, 2.7), Vector2(3.0, 9.4), Vector2(10.3, 8.8), Vector2(1.2, 6.6)]
 
 
 # ======================= Điều khiển phóng =======================
@@ -291,6 +404,12 @@ func _draw() -> void:
 		ang = 0.7 * p * p
 		rsc = 1.0 - 0.5 * smoothstep(0.4, 1.0, p)
 	var a := smoothstep(0.05, 0.65, p) if running else 0.0
+	_fill_n = 0
+	var land: Dictionary = Game.s.land
+	if int(land.left) > 0:
+		var ntiles: int = (_fill_info(int(land.target)).tiles as Array).size()
+		var total: int = maxi(1, int(land.total))
+		_fill_n = int(round(float(ntiles) * float(total - int(land.left)) / float(total)))
 
 	# Căn khung thế giới vừa màn hình (chừa thanh trên/dưới), thu nhỏ theo bề rộng khi màn dọc.
 	# Màn thấp (điện thoại nằm ngang): để cảnh lấn dưới HUD một phần cho đỡ nhỏ.
@@ -357,76 +476,271 @@ func _draw_sea(wx: String) -> void:
 
 func _draw_island() -> void:
 	var ow := _ow()
-	var l := _iso(0.0, MAP)
+	var st := _land_stage()
+	var earth := st >= 2
+	var tp := _iso(0.0, 0.0)
 	var r := _iso(MAP, 0.0)
 	var b := _iso(MAP, MAP)
-	var tp := _iso(0.0, 0.0)
-	var depth := 26.0
+	var l := _iso(0.0, MAP)
 	# Bóng đảo trên mặt nước.
 	draw_colored_polygon(PackedVector2Array([tp + Vector2(0, 22), r + Vector2(40, 36), b + Vector2(0, 58), l + Vector2(-40, 36)]), Color(0.1, 0.35, 0.45, 0.28))
-	# Vách đất phía trước.
-	_poly([l, b, b + Vector2(0, depth), l + Vector2(0, depth)], Color.html("#a8743f"))
-	_poly([r, b, b + Vector2(0, depth), r + Vector2(0, depth)], Color.html("#c58b4a"))
-	# Cỏ + viền cát.
-	var sand := 0.35
-	_poly([_iso(-sand, -sand), _iso(MAP + sand, -sand), _iso(MAP + sand, MAP + sand), _iso(-sand, MAP + sand)], Color.html("#f1de9c"))
-	_poly([tp, r, b, l], Color.html("#8fd150"))
-	# Quảng trường đá.
-	var q0 := 1.0
-	var q1 := 9.0
+	# Bờ: bùn thấp khi còn là đầm lầy, đất nung khi đã cải tạo hết.
+	var depth := 24.0 if earth else 12.0
+	_poly([l, b, b + Vector2(0, depth), l + Vector2(0, depth)], Color.html("#a8743f") if earth else Color.html("#6f6b46"))
+	_poly([r, b, b + Vector2(0, depth), r + Vector2(0, depth)], Color.html("#c58b4a") if earth else Color.html("#88834f"))
+	var sand := 0.32
+	_poly([_iso(-sand, -sand), _iso(MAP + sand, -sand), _iso(MAP + sand, MAP + sand), _iso(-sand, MAP + sand)], Color.html("#f1de9c") if earth else Color.html("#bdb178"))
+	_poly([tp, r, b, l], Color.html("#8fd150") if earth else Color.html("#8e9b56"))
+	if not earth:
+		# Mảng bùn sẫm và vũng nước đọng.
+		for pl in _pools:
+			var pg: Vector2 = pl.g
+			if _tile_filled(floori(pg.x), floori(pg.y)):
+				continue
+			var outer := PackedVector2Array()
+			var inner := PackedVector2Array()
+			for k in 24:
+				var th := TAU * float(k) / 24.0
+				outer.append(_iso(pg.x + cos(th) * pl.rx, pg.y + sin(th) * pl.ry))
+				inner.append(_iso(pg.x + cos(th) * pl.rx * 0.68, pg.y + sin(th) * pl.ry * 0.68 - 0.04))
+			draw_colored_polygon(outer, Color.html("#6a7a45"))
+			draw_colored_polygon(inner, Color.html("#5e9b9c"))
+			var ln := outer.duplicate()
+			ln.append(outer[0])
+			draw_polyline(ln, Color(INK.r, INK.g, INK.b, 0.55), ow * 0.5)
+			var wl := PackedVector2Array([_iso(pg.x - pl.rx * 0.3, pg.y - pl.ry * 0.1), _iso(pg.x + pl.rx * 0.1, pg.y - pl.ry * 0.25)])
+			draw_polyline(wl, Color(1, 1, 1, 0.5), 2.0)
+
+	# Nền đất cứng: bãi khởi điểm (4×4) hoặc quảng trường (8×8), nổi lên trên đầm lầy.
+	var slab := PLAZA if st >= 1 else CORE
+	var x0 := slab.position.x
+	var y0 := slab.position.y
+	var x1 := slab.end.x
+	var y1 := slab.end.y
+	_poly([_iso(x0, y1), _iso(x1, y1), _iso(x1, y1, -9.0), _iso(x0, y1, -9.0)], Color.html("#a39d85"))
+	_poly([_iso(x1, y0), _iso(x1, y1), _iso(x1, y1, -9.0), _iso(x1, y0, -9.0)], Color.html("#beb89d"))
 	var qa := Color.html("#f0e7c9")
 	var qb := Color.html("#e4d9b3")
-	for i in 8:
-		for j in 8:
-			_flat_tile(q0 + i, q0 + j, 1.0, 1.0, qa if (i + j) % 2 == 0 else qb)
-	_poly([_iso(q0, q0), _iso(q1, q0), _iso(q1, q1), _iso(q0, q1)], Color(0, 0, 0, 0), ow)
-	# Ô đá mép bị rêu phủ: vài mảng cỏ lấn vào.
+	for i in range(int(x0), int(x1)):
+		for j in range(int(y0), int(y1)):
+			_flat_tile(i, j, 1.0, 1.0, qa if (i + j) % 2 == 0 else qb)
+	_poly([_iso(x0, y0), _iso(x1, y0), _iso(x1, y1), _iso(x0, y1)], Color(0, 0, 0, 0), ow)
+	# Rêu lấn vào mép đá.
 	var moss := Color(0.56, 0.82, 0.31, 0.9)
-	for m in [[1.0, 1.0, 1.0, 2.0], [8.0, 1.0, 1.0, 1.0], [1.0, 8.0, 2.0, 1.0], [8.0, 7.0, 1.0, 2.0], [4.0, 8.0, 3.0, 1.0]]:
+	var moss_list: Array = [[2, 2, 1, 2], [9, 2, 1, 1], [2, 9, 2, 1], [9, 8, 1, 2], [5, 9, 3, 1]] if st >= 1 else [[4, 4, 1, 1], [7, 7, 1, 1]]
+	for m in moss_list:
 		_flat_tile(m[0], m[1], m[2], m[3], moss)
 	# Vòng khắc giữa quảng trường.
 	var ring := PackedVector2Array()
 	var ring2 := PackedVector2Array()
 	for i in 41:
-		var th := TAU * float(i) / 40.0
-		ring.append(_iso(5.0 + cos(th) * 1.9, 5.0 + sin(th) * 1.9))
-		ring2.append(_iso(5.0 + cos(th) * 1.5, 5.0 + sin(th) * 1.5))
+		var th2 := TAU * float(i) / 40.0
+		ring.append(_iso(6.0 + cos(th2) * 1.9, 6.0 + sin(th2) * 1.9))
+		ring2.append(_iso(6.0 + cos(th2) * 1.5, 6.0 + sin(th2) * 1.5))
 	draw_polyline(ring, Color(0.72, 0.66, 0.5, 0.9), 3.0)
 	draw_polyline(ring2, Color(0.72, 0.66, 0.5, 0.6), 2.0)
+	_draw_reclaim()
+	# Kênh nước mặn: luôn còn lại, dùng làm kênh thoát nước.
+	var water := Color.html("#5fb3b8")
+	for ch in CHANNELS:
+		var wp := PackedVector2Array()
+		for gp in _smooth(ch, 8):
+			wp.append(_iso(gp.x, gp.y))
+		draw_polyline(wp, INK, 26.0 + ow * 2.0, true)
+		draw_polyline(wp, water, 26.0, true)
+		draw_polyline(wp, Color.html("#8fd3d3"), 11.0, true)
+
+
+# ---------- cải tạo đất ----------
+
+func _stake(base: Vector2, col: Color) -> void:
+	var ow := _ow()
+	draw_line(base, base + Vector2(0, -30), INK, ow + 1.5)
+	draw_line(base, base + Vector2(0, -30), Color.html("#efe9cc"), 2.0)
+	_poly([base + Vector2(0, -30), base + Vector2(17, -24), base + Vector2(0, -18)], col, ow * 0.6)
+
+
+func _draw_reclaim() -> void:
+	var st := _land_stage()
+	if st >= 2:
+		return
+	var land: Dictionary = Game.s.land
+	var busy: bool = int(land.left) > 0
+	var tr := _region(st + 1)
+	var ow := _ow()
+	if busy:
+		var tiles: Array = _fill_info(int(land.target)).tiles
+		var sa := Color.html("#e0cc8f")
+		var sb := Color.html("#d4bd7c")
+		for k in mini(_fill_n, tiles.size()):
+			var tl: Vector2i = tiles[k]
+			_flat_tile(tl.x, tl.y, 1.0, 1.0, sa if (tl.x + tl.y) % 2 == 0 else sb, 2.0)
+			var d := [_iso(tl.x, tl.y, 2.0), _iso(tl.x + 1, tl.y, 2.0), _iso(tl.x + 1, tl.y + 1, 2.0), _iso(tl.x, tl.y + 1, 2.0)]
+			for e in 4:
+				draw_line(d[e], d[(e + 1) % 4], Color(0.45, 0.37, 0.2, 0.45), 1.5)
+	var corners := [_iso(tr.position.x, tr.position.y), _iso(tr.end.x, tr.position.y), _iso(tr.end.x, tr.end.y), _iso(tr.position.x, tr.end.y)]
+	var lc := Color.html("#e8742c") if busy else Color(INK.r, INK.g, INK.b, 0.8)
+	for e in 4:
+		draw_dashed_line(corners[e], corners[(e + 1) % 4], lc, ow * 0.9, 10.0)
+	for e in 4:
+		_stake(corners[e], Color.html("#ff8a3d"))
+
+
+func _draw_land_marker(tr: Rect2) -> void:
+	var c := _iso(tr.end.x - 0.6, tr.end.y - 0.6, 26.0 + (0.0 if _reduce_motion else sin(_t * 3.0) * 4.0))
+	draw_circle(c, 19.0 + _ow(), INK)
+	draw_circle(c, 19.0, UIKit.IGNITE)
+	draw_rect(Rect2(c.x - 9, c.y - 2, 18, 4), INK)
+	draw_rect(Rect2(c.x - 2, c.y - 9, 4, 18), INK)
+
+
+## Tàu hút cát + ống bơm san lấp, hoạt động trong lúc cải tạo.
+func _draw_dredger(tr: Rect2) -> void:
+	var ow := _ow()
+	var gx := tr.end.x + 0.7
+	var gy := tr.position.y + tr.size.y * 0.5 - 0.5
+	var bob := 0.0 if _reduce_motion else sin(_t * 2.0) * 1.6
+	var land: Dictionary = Game.s.land
+	var tiles: Array = _fill_info(int(land.target)).tiles
+	var nf := clampi(_fill_n, 0, tiles.size() - 1)
+	var tl: Vector2i = tiles[nf]
+	var fp := _iso(tl.x + 0.5, tl.y + 0.5, 4.0)
+	var a := _iso(gx + 0.3, gy + 0.45, 24.0 + bob)
+	var mid := (a + fp) * 0.5 + Vector2(0, 34)
+	var pipe := _curve(a, mid, fp, 16)
+	draw_polyline(pipe, INK, 9.0 + ow, true)
+	draw_polyline(pipe, Color.html("#4a525a"), 7.0, true)
+	draw_polyline(pipe, Color.html("#f2c23c"), 2.0, true)
+	# Tia cát phun ra đầu ống.
+	for k in 9:
+		var ph := 0.3 if _reduce_motion else fposmod(_t * 1.7 + float(k) / 9.0, 1.0)
+		var pp := fp + Vector2((ph - 0.5) * 46.0, -34.0 * sin(ph * PI) + 4.0)
+		draw_circle(pp, 4.5, Color(0.55, 0.45, 0.24, 0.9))
+		draw_circle(pp, 3.2, Color.html("#e0cc8f"))
+	_box(gx, gy, 2.0, 0.9, 8.0, Color.html("#f2c23c"), Color.html("#c99a22"), Color.html("#deaa2d"), bob)
+	_box(gx + 0.2, gy + 0.15, 0.8, 0.6, 18.0, Color.html("#e8eef4"), Color.html("#9db0c6"), Color.html("#b9c8d6"), 8.0 + bob)
+	_wall_l(gx + 0.2, gy + 0.15, 0.8, 0.6, 0.15, 0.85, 0.45, 0.8, Color.html("#7fd6ff"), 8.0 + bob)
+	var blink := (int(_t / 0.5) % 2 == 1) and not _reduce_motion
+	var bt := _iso(gx + 0.6, gy + 0.45, 30.0 + bob)
+	draw_circle(bt, 4.5 + ow * 0.5, INK)
+	draw_circle(bt, 3.5, Color.html("#ff8a3d") if blink else Color.html("#a85a2a"))
+
+
+# ---------- thực vật đầm lầy ----------
+
+func _draw_swamp_plant(it: Dictionary) -> void:
+	var g: Vector2 = it.g
+	var base := _iso(g.x, g.y)
+	var k: float = it.k
+	match it.t:
+		"reed":
+			_draw_reeds(base, k, it.ph)
+		"mangrove":
+			_draw_mangrove(base, k)
+		_:
+			_draw_lily(base, k)
+
+
+func _draw_reeds(base: Vector2, k: float, ph: float) -> void:
+	_ell(base + Vector2(0, 2), 20.0 * k, 7.0 * k, Color(0.15, 0.3, 0.3, 0.25))
+	var sway := 0.0 if _reduce_motion else sin(_t * 1.6 + ph) * 3.0
+	var ow := _ow()
+	var tops: Array = []
+	for i in 6:
+		var dx := (float(i) - 2.5) * 5.0 * k
+		var h := (30.0 + float((i * 7) % 5) * 5.0) * k
+		tops.append([base + Vector2(dx, 0), base + Vector2(dx * 1.5 + sway * float(i % 3 + 1) * 0.5, -h)])
+	for tp in tops:
+		draw_line(tp[0], tp[1], INK, ow * 0.9 + 2.0)
+	for i in tops.size():
+		draw_line(tops[i][0], tops[i][1], Color.html("#7ea03c") if i % 2 == 0 else Color.html("#9bb84a"), 2.6)
+	# Bông hương bồ nâu.
+	for i in [1, 4]:
+		var hd: Vector2 = tops[i][1]
+		draw_line(hd, hd + Vector2(0, -10), INK, 6.0 + ow * 0.4)
+		draw_line(hd, hd + Vector2(0, -10), Color.html("#8a5a32"), 4.0)
+
+
+func _draw_mangrove(base: Vector2, k: float) -> void:
+	_ell(base + Vector2(0, 3), 26.0 * k, 9.0 * k, Color(0.15, 0.3, 0.3, 0.28))
+	var ow := _ow()
+	for i in 5:
+		var sx := (float(i) - 2.0) * 9.0 * k
+		draw_line(base + Vector2(sx, 2), base + Vector2(sx * 0.25, -22.0 * k), INK, ow + 2.0)
+	for i in 5:
+		var sx2 := (float(i) - 2.0) * 9.0 * k
+		draw_line(base + Vector2(sx2, 2), base + Vector2(sx2 * 0.25, -22.0 * k), Color.html("#8a5a32"), 3.0)
+	_foliage(base + Vector2(0, -16.0 * k), [Vector3(0, -32, 22), Vector3(-17, -22, 16), Vector3(17, -24, 17), Vector3(0, -18, 18)], Color.html("#4c8a48"), k)
+
+
+func _draw_lily(base: Vector2, k: float) -> void:
+	_ell(base, 15.0 * k + _ow() * 0.4, 6.5 * k + _ow() * 0.4, INK)
+	_ell(base, 14.0 * k, 5.5 * k, Color.html("#6fb04e"))
+	draw_circle(base + Vector2(3.0, -1.0), 2.6, Color.html("#f5a3b8"))
+
+
+func _draw_egret(g: Vector2) -> void:
+	var base := _iso(g.x, g.y)
+	var bob := 0.0 if _reduce_motion else sin(_t * 2.2 + g.x) * 2.0
+	var ow := _ow()
+	var white := Color.html("#fbfbf4")
+	_ell(base + Vector2(0, 2), 14.0, 5.0, Color(0.15, 0.3, 0.3, 0.28))
+	for dx in [-3.0, 3.0]:
+		draw_line(base + Vector2(dx, 0), base + Vector2(dx, -16), INK, ow * 0.8 + 1.5)
+	_ell(base + Vector2(0, -22), 11.0 + ow * 0.5, 7.0 + ow * 0.5, INK)
+	_ell(base + Vector2(0, -22), 11.0, 7.0, white)
+	draw_line(base + Vector2(8, -26), base + Vector2(12, -42 + bob), INK, ow * 0.9 + 2.0)
+	draw_line(base + Vector2(8, -26), base + Vector2(12, -42 + bob), white, 3.0)
+	draw_circle(base + Vector2(13, -44 + bob), 5.0 + ow * 0.5, INK)
+	draw_circle(base + Vector2(13, -44 + bob), 5.0, white)
+	draw_colored_polygon(PackedVector2Array([base + Vector2(17, -45 + bob), base + Vector2(29, -42 + bob), base + Vector2(17, -41 + bob)]), Color.html("#f2b04c"))
+	draw_circle(base + Vector2(14, -45 + bob), 1.2, INK)
 
 
 # ---------- danh sách vẽ theo độ sâu ----------
 
 func _build_items() -> void:
-	for f in _flowers:
-		var fg: Vector2 = f
-		_items.append([fg.x + fg.y - 0.5, _draw_flower.bind(fg)])
-	for b in _bushes:
-		var bg: Vector2 = b.g
-		_items.append([bg.x + bg.y, _draw_bush.bind(b)])
-
 	var s: Dictionary = Game.s
+	var st: int = int(s.land.stage)
+	# Thực vật đầm lầy: chỉ còn ở ô chưa được cải tạo.
+	for sw in _swamp:
+		var sg: Vector2 = sw.g
+		if _tile_filled(floori(sg.x), floori(sg.y)):
+			continue
+		_items.append([sg.x + sg.y, _draw_swamp_plant.bind(sw)])
+	for e in _egrets:
+		var eg: Vector2 = e
+		if not _tile_filled(floori(eg.x), floori(eg.y)):
+			_items.append([eg.x + eg.y, _draw_egret.bind(eg)])
+	# Cây xanh dải ngoài: chỉ có sau khi cải tạo xong Lô III.
+	if st >= 2:
+		for f in _flowers:
+			var fg: Vector2 = f
+			_items.append([fg.x + fg.y - 0.5, _draw_flower.bind(fg)])
+		for b in _bushes:
+			var bg: Vector2 = b.g
+			_items.append([bg.x + bg.y, _draw_bush.bind(b)])
+
 	var f_: Dictionary = s.fac
 	var cur: Dictionary = {} if running else Game.current_sel()
 
 	# Trung tâm điều khiển (luôn có): chạm để mở hợp đồng.
 	var cc := CTRL_AT
 	_items.append([cc.position.x + cc.position.y + cc.size.x, _draw_control])
-	_reg("contracts", 0, _iso(cc.position.x + cc.size.x * 0.5, cc.position.y + cc.size.y * 0.5, 30.0), 60.0)
+	_reg("contracts", 0, _iso(cc.position.x + cc.size.x * 0.5, cc.position.y + cc.size.y * 0.5, 30.0), 56.0)
 
-	# Nhà lắp ráp.
+	# Công trình: chỉ có ô trống để xây khi đã cải tạo Lô II.
 	_facility_item("asm", f_.asm, ASM_AT)
-	# Xưởng sửa chữa.
 	_facility_item("shop", f_.shop, SHOP_AT)
-	# Trạm thời tiết (cột nhỏ).
-	_items.append([WX_AT.x + WX_AT.y, _draw_weather_mast.bind(int(f_.wx))])
-	_reg("fac", "wx", _iso(WX_AT.x, WX_AT.y, 40.0), 44.0)
-	# Kho nhiên liệu.
+	if int(f_.wx) > 0 or st >= 1:
+		_items.append([WX_AT.x + WX_AT.y, _draw_weather_mast.bind(int(f_.wx))])
+		_reg("fac", "wx", _iso(WX_AT.x, WX_AT.y, 40.0), 44.0)
 	var fuel_lv: int = f_.fuel
 	if fuel_lv == 0:
-		var fr := Rect2(FUEL_AT[0].x - 0.5, FUEL_AT[0].y - 0.5, 1.8, 1.8)
-		_items.append([fr.position.x + fr.position.y + 1.8, _draw_marker.bind(fr, "fuel")])
-		_reg("fac", "fuel", _iso(fr.position.x + 0.9, fr.position.y + 0.9, 20.0), 56.0)
+		if st >= 1:
+			var fr := Rect2(FUEL_AT[0].x - 0.5, FUEL_AT[0].y - 0.5, 1.8, 1.8)
+			_items.append([fr.position.x + fr.position.y + 1.8, _draw_marker.bind(fr, "fuel")])
+			_reg("fac", "fuel", _iso(fr.position.x + 0.9, fr.position.y + 0.9, 20.0), 56.0)
 	else:
 		for i in fuel_lv:
 			var fp: Vector2 = FUEL_AT[i]
@@ -444,14 +758,27 @@ func _build_items() -> void:
 		_reg("pad", pad.id, _iso(c.x, c.y, PAD_H + 50.0), 76.0)
 		if sel and not cur.r.is_empty() and not running:
 			_items.append([c.x + c.y + 0.6, _draw_rocket_at.bind(_iso(c.x, c.y, PAD_H), cur.r.type, 1.0, 0.0, 0.0)])
-	if n < 3:
+	if n < 3 and st >= 1:
 		var c2: Vector2 = PAD_SLOTS[n]
 		var r2 := Rect2(c2.x - PAD_SIZE * 0.5, c2.y - PAD_SIZE * 0.5, PAD_SIZE, PAD_SIZE)
 		_items.append([c2.x + c2.y, _draw_marker.bind(r2, "pad")])
 		_reg("newpad", n, _iso(c2.x, c2.y, 26.0), 62.0)
 
+	# Cải tạo đất: tàu hút cát khi đang thi công, bong bóng khi còn có thể cải tạo.
+	if st < 2:
+		var tr := _region(st + 1)
+		if int(s.land.left) > 0:
+			var dg := Vector2(tr.end.x + 1.2, tr.position.y + tr.size.y * 0.5)
+			_items.append([dg.x + dg.y, _draw_dredger.bind(tr)])
+			_reg("land", 0, _iso(dg.x, dg.y, 24.0), 70.0)
+		else:
+			_items.append([tr.end.x + tr.end.y + 1.0, _draw_land_marker.bind(tr)])
+			_reg("land", 0, _iso(tr.end.x - 0.6, tr.end.y - 0.6, 24.0), 62.0)
+
 
 func _facility_item(key: String, lv: int, r: Rect2) -> void:
+	if lv == 0 and _land_stage() < 1:
+		return    # chưa có đất để xây: chưa hiện ô trống
 	var c := r.get_center()
 	if lv == 0:
 		_items.append([c.x + c.y, _draw_marker.bind(r, key)])
@@ -714,6 +1041,8 @@ func _chip(sp: Vector2, text: String, col: Color = Color(0, 0, 0, 0)) -> void:
 
 func _draw_labels() -> void:
 	var s: Dictionary = Game.s
+	var money: int = s.money
+	var st: int = int(s.land.stage)
 	for i in s.pads.size():
 		var pad: Dictionary = s.pads[i]
 		var c: Vector2 = PAD_SLOTS[i]
@@ -721,9 +1050,18 @@ func _draw_labels() -> void:
 		if pad.busy > 0:
 			txt += " · bận %dn" % pad.busy
 		_chip(_s(_iso(c.x + 0.5, c.y + 0.5, 0.0)) + Vector2(0, 30), txt)
-	var money: int = s.money
-	if _sc < 0.75:
-		return    # cảnh nhỏ: nhãn công trình chồng lên nhau, chỉ giữ nhãn bệ; chạm ô để xem chi tiết
+	# Nhãn cải tạo đất (luôn hiện khi còn lô để cải tạo).
+	if st < 2:
+		var tr := _region(st + 1)
+		var L: Dictionary = GameData.LAND[st + 1]
+		if int(s.land.left) > 0:
+			var dg := _s(_iso(tr.end.x + 1.2, tr.position.y + tr.size.y * 0.5, 0.0))
+			_chip(dg + Vector2(0, 30), "Cải tạo %s · còn %dn" % [L.short, int(s.land.left)], UIKit.WARN)
+		else:
+			var blk: String = Game.reclaim_blocked()
+			_chip(_s(_iso(tr.end.x - 0.6, tr.end.y - 0.6, 0.0)) + Vector2(0, 34), "Cải tạo %s · %s" % [L.short, Game.fmt(L.cost)], UIKit.BAD if blk != "" else UIKit.INK)
+	if _sc < 0.75 or st < 1:
+		return    # cảnh nhỏ / chưa có đất: bỏ nhãn công trình, chạm ô để xem chi tiết
 	for k in ["shop", "wx", "fuel", "asm"]:
 		var lv: int = s.fac[k]
 		var f: Dictionary = GameData.FAC[k]

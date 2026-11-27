@@ -90,6 +90,8 @@ func _grow(box: VBoxContainer) -> void:
 	var s: Dictionary = Game.s
 	var money: int = s.money
 
+	_land_card(box)
+
 	# Tài chính
 	var fin := UIKit.card()
 	var fb: VBoxContainer = fin[1]
@@ -120,13 +122,15 @@ func _grow(box: VBoxContainer) -> void:
 		row.add_child(UIKit.lbl("Bệ %s · cấp %d · chuẩn bị lại %d ngày%s" % [p.name, p.lvl, Game.refurb_days(p), busy], "", true))
 		if p.lvl < 3:
 			var cost: int = GameData.PAD_UP[p.lvl]
-			row.add_child(UIKit.btn("Lên cấp %d %s" % [p.lvl + 1, Game.fmt(cost)], "Small", Game.upgrade_pad.bind(p.id), money < cost or Game.launching))
+			var pblk: String = Game.land_block(int(p.lvl) + 1)
+			row.add_child(UIKit.btn(pblk if pblk != "" else "Lên cấp %d %s" % [p.lvl + 1, Game.fmt(cost)], "Small", Game.upgrade_pad.bind(p.id), pblk != "" or money < cost or Game.launching))
 		else:
 			row.add_child(UIKit.pill("Tối đa", UIKit.GOOD))
 		pb.add_child(row)
 	if s.pads.size() < 3:
 		var nc: int = GameData.PAD_NEW[s.pads.size()]
-		var nb := UIKit.btn("Xây bệ mới %s" % Game.fmt(nc), "Small", Game.build_pad, money < nc or Game.launching)
+		var nblk: String = Game.land_block(1)
+		var nb := UIKit.btn(nblk if nblk != "" else "Xây bệ mới %s" % Game.fmt(nc), "Small", Game.build_pad, nblk != "" or money < nc or Game.launching)
 		nb.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 		pb.add_child(nb)
 	pb.add_child(UIKit.lbl("Cấp 2 cho Kestrel, cấp 3 cho Condor. Cấp cao chuẩn bị lại nhanh hơn.", "Muted", true))
@@ -149,7 +153,8 @@ func _grow(box: VBoxContainer) -> void:
 		cb.add_child(UIKit.lbl(d, "Muted", true))
 		if lv < 3:
 			var c: int = f.cost[lv]
-			var ub := UIKit.btn("Nâng cấp %s" % Game.fmt(c), "Small", Game.upgrade_facility.bind(k), money < c or Game.launching)
+			var fblk: String = Game.land_block(lv + 1)
+			var ub := UIKit.btn(fblk if fblk != "" else ("Xây %s" % Game.fmt(c) if lv == 0 else "Nâng cấp %s" % Game.fmt(c)), "Small", Game.upgrade_facility.bind(k), fblk != "" or money < c or Game.launching)
 			ub.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 			cb.add_child(ub)
 		box.add_child(fc[0])
@@ -167,6 +172,39 @@ func _grow(box: VBoxContainer) -> void:
 		row2.add_child(UIKit.btn(label, "Small", Game.buy_rocket.bind(k), lock or money < R.price or Game.launching))
 		sb.add_child(row2)
 	box.add_child(shop[0])
+
+
+## Thẻ Đất: mô tả vùng đầm lầy, giai đoạn hiện tại, tiến độ và nút cải tạo lô kế tiếp.
+func _land_card(box: VBoxContainer) -> void:
+	var land: Dictionary = Game.s.land
+	var st: int = int(land.stage)
+	var cur: Dictionary = GameData.LAND[st]
+	var pc := UIKit.card(UIKit.IGNITE)
+	var cb: VBoxContainer = pc[1]
+	var head := UIKit.hbox(8)
+	head.add_child(UIKit.lbl("Đất · %s" % cur.name, "H3"))
+	head.add_child(UIKit.spacer())
+	head.add_child(UIKit.pill(cur.short, UIKit.ACCENT))
+	cb.add_child(head)
+	cb.add_child(UIKit.lbl("Vùng đầm lầy ven biển: bãi triều, kênh nước mặn, rừng ngập mặn; nền yếu, ngập khi triều lên. Phải san lấp từng lô mới có chỗ xây cảng vũ trụ.", "Muted", true))
+	cb.add_child(UIKit.lbl("Hiện tại: " + String(cur.fx), "", true))
+	if int(land.left) > 0:
+		var L: Dictionary = GameData.LAND[int(land.target)]
+		var done_pct: float = 100.0 * float(int(land.total) - int(land.left)) / float(maxi(1, int(land.total)))
+		cb.add_child(UIKit.lbl("Đang cải tạo %s: còn %d ngày (bão làm công trường nghỉ)." % [L.short, int(land.left)], "Warn", true))
+		cb.add_child(UIKit.bar(done_pct, 8))
+	elif st < 2:
+		var nxt: Dictionary = GameData.LAND[st + 1]
+		cb.add_child(UIKit.lbl("Lô kế tiếp, %s: %s" % [nxt.short, nxt.fx], "", true))
+		var blk: String = Game.reclaim_blocked()
+		var b := UIKit.btn("Cải tạo %s · %s · %d ngày" % [nxt.short, Game.fmt(nxt.cost), nxt.days], "SmallPrimary", Game.start_reclaim, blk != "" or Game.launching)
+		b.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+		cb.add_child(b)
+		if blk != "":
+			cb.add_child(UIKit.lbl(blk, "Bad", true))
+	else:
+		cb.add_child(UIKit.pill("Đã cải tạo hết", UIKit.GOOD))
+	box.add_child(pc[0])
 
 
 # ---------------- Nhật ký ----------------

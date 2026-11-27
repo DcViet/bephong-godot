@@ -16,6 +16,12 @@ Dòng lệnh: `godot --path . ` — kiểm tra không giao diện: `godot --head
 | `scripts/main.gd` | Bố cục: cảnh toàn màn hình + thanh trên/dưới nổi + bảng trượt (phải ở landscape, dưới ở portrait), hệ số UI theo màn hình/devicePixelRatio |
 | `tools/smoke_test.gd` | Chạy thử headless |
 
+## Đất: cải tạo vùng đầm lầy
+Game mở đầu giữa đầm lầy ven biển, chỉ có bãi khởi điểm 4×4 ô (Lô I). Mỗi lô cải tạo tốn tiền và vài ngày thi công (bão làm công trường nghỉ):
+- Lô II (quảng trường 8×8): $450k, 3 ngày. Mở ô xây công trình, bệ thứ 2–3, nâng cấp lên cấp 2.
+- Lô III (toàn đảo 12×12): $1,1M, 5 ngày, cần uy tín 8 (giấy phép môi trường). Mở cấp 3 cho bệ và công trình.
+Dữ liệu ở `GameData.LAND`; luật ở `Game.start_reclaim`, `land_block`, `reclaim_blocked`; cảnh vẽ trong `launch_view.gd` (đầm lầy → nền cát đang san lấp → quảng trường → cỏ). File lưu cũ không có `land` được coi là đã cải tạo hết.
+
 Luồng: giao diện gọi hàm hành động của `Game` → `Game` đổi `s` và phát `changed` → `main.gd` dựng lại các bảng.
 Kết quả chuyến phóng được quyết định lúc bấm Phóng nhưng chỉ áp vào trạng thái khi hoạt ảnh xong (`finish_launch`).
 

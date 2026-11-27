@@ -330,11 +330,12 @@ func _sync_result() -> void:
 	card.theme_type_variation = "ResultCard"
 	var accent: Color = UIKit.GOOD if res.good else UIKit.BAD
 	card.add_theme_stylebox_override("panel", UIKit.flat(UIKit.PANEL, accent, 4, 16, 20, 18))
-	card.custom_minimum_size.x = minf(380.0, size.x - 24.0)
+	card.custom_minimum_size.x = maxf(260.0, minf(420.0, get_viewport_rect().size.x - 24.0))
 	center.add_child(card)
 	var box := UIKit.vbox(10)
 	card.add_child(box)
-	var kind := "TRÒ CHƠI KẾT THÚC" if res.over else ("KẾT QUẢ CHUYẾN BAY" if res.good else "SỰ CỐ CHUYẾN BAY")
+	var intro: bool = res.get("intro", false)
+	var kind := "TRÒ CHƠI KẾT THÚC" if res.over else ("GIỚI THIỆU DỰ ÁN" if intro else ("KẾT QUẢ CHUYẾN BAY" if res.good else "SỰ CỐ CHUYẾN BAY"))
 	box.add_child(UIKit.lbl(kind, "Key"))
 	var title := UIKit.lbl(res.title, "Title", true)
 	title.add_theme_font_size_override("font_size", 21)
@@ -353,7 +354,7 @@ func _sync_result() -> void:
 	if res.over:
 		btn = UIKit.btn("Chơi lại", "Primary", Game.restart)
 	else:
-		btn = UIKit.btn("Tiếp tục", "Primary", Game.dismiss_result)
+		btn = UIKit.btn("Bắt đầu" if intro else "Tiếp tục", "Primary", Game.dismiss_result)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	box.add_child(btn)
 	add_child(_result_layer)

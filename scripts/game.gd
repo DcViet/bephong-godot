@@ -40,6 +40,8 @@ func load_game() -> bool:
 	var v: Variant = f.get_var()
 	if v is Dictionary and v.get("v", 0) == 1 and v.has("pads"):
 		s = v
+		if not s.has("land"):
+			s.land = {"stage": 2, "target": 2, "left": 0, "total": 0}    # file lưu cũ: đất đã đủ
 		launching = false
 		pending_result = _over_result() if s.over != "" else {}
 		return true
@@ -221,14 +223,18 @@ func new_game() -> void:
 		"pads": [{"id": 1, "name": "A", "lvl": 1, "busy": 0}], "rockets": [], "contracts": [],
 		"fac": {"shop": 0, "wx": 0, "fuel": 0, "asm": 0}, "log": [], "next_id": 10, "name_idx": 0,
 		"ok": 0, "fail": 0, "geo": 0, "moon": 0, "debris": false, "price_war": 0, "ins": false,
-		"tab": "fleet", "sel": {"c": 0, "r": 0, "p": 0}, "over": ""}
+		"tab": "fleet", "sel": {"c": 0, "r": 0, "p": 0}, "over": "",
+		"land": {"stage": 0, "target": 0, "left": 0, "total": 0}}
 	var r := new_rocket("sparrow")
 	r.parts = {"engine": 72, "hull": 68, "shield": 75, "avionics": 70}
 	s.rockets.append(r)
 	for i in 4:
 		s.contracts.append(gen_contract(0))
 	s.contracts[0].accepted = true
-	log_add("Cảng vũ trụ mở cửa: một tàu Sparrow cũ, một bệ phóng và khoản vay $1.5M.")
+	log_add("Cảng vũ trụ mở cửa giữa đầm lầy: một tàu Sparrow cũ, một bệ phóng trên bãi khởi điểm và khoản vay $1.5M.")
+	pending_result = {"good": true, "over": false, "intro": true, "title": "Dự án Bãi Lầy Cửa Sông",
+		"sub": "Vùng đầm lầy ven biển: bãi triều lầy lội, kênh nước mặn và rừng ngập mặn, nền đất yếu và ngập mỗi khi triều lên. Bạn dựng cảng vũ trụ tư nhân ở đây, theo cách các cảng phóng ven biển (như Boca Chica của SpaceX) vẫn làm: bắt đầu từ một mảnh nền đầm nén giữa đầm lầy, phóng kiếm tiền, rồi san lấp dần từng lô.",
+		"lines": [["Địa hình", "Đầm lầy ven biển"], ["Nền sẵn có", "Bãi khởi điểm 4×4 ô"], ["Việc cần làm", "Cải tạo 3 lô đất"], ["Giấy phép", "Lô III cần uy tín 8"]]}
 	commit()
 
 
@@ -573,6 +579,7 @@ func next_day() -> void:
 	s.wxq.append(_wx_entry())
 	s.debris = false
 	if s.price_war > 0: s.price_war -= 1
+	_advance_land()
 	if rng.randf() < 0.12:
 		var e: int = rng.randi_range(0, 4)
 		if e == 0:
@@ -614,6 +621,68 @@ func next_day() -> void:
 		s.contracts.append(gen_contract())
 	_check_over()
 	commit()
+
+
+# ======================= Đất: cải tạo vùng đầm lầy =======================
+
+## Giai đoạn đất tối thiểu để xây / nâng lên cấp `new_level`: cấp 3 cần Lô III, còn lại cần Lô II.
+func land_need(new_level: int) -> int:
+	return 2 if new_level >= 3 else 1
+
+
+## Lý do chưa được xây / nâng lên cấp `new_level` vì thiếu đất ("" nếu được).
+func land_block(new_level: int) -> String:
+	var need: int = land_need(new_level)
+	if int(s.land.stage) >= need:
+		return ""
+	return "Cần cải tạo " + String(GameData.LAND[need].short)
+
+
+## Lý do chưa bắt đầu được lô cải tạo kế tiếp ("" nếu bắt đầu được).
+func reclaim_blocked() -> String:
+	var land: Dictionary = s.land
+	if int(land.left) > 0:
+		return "Đang thi công"
+	var st: int = int(land.stage)
+	if st >= 2:
+		return "Đã cải tạo hết"
+	var L: Dictionary = GameData.LAND[st + 1]
+	if s.rep < L.rep:
+		return "Cần uy tín %d (giấy phép môi trường)" % L.rep
+	if s.money < L.cost:
+		return "Không đủ tiền"
+	return ""
+
+
+func start_reclaim() -> void:
+	if launching or reclaim_blocked() != "":
+		return
+	var st: int = int(s.land.stage)
+	var L: Dictionary = GameData.LAND[st + 1]
+	s.money -= L.cost
+	s.land.target = st + 1
+	s.land.left = L.days
+	s.land.total = L.days
+	log_add("Khởi công cải tạo %s: san lấp, đầm nén, đổ móng (%d ngày, %s)." % [L.short, L.days, fmt(-L.cost)], "good")
+	toast.emit("Khởi công cải tạo " + L.short)
+	commit()
+
+
+## Mỗi ngày công trường tiến một ngày; bão thì nghỉ.
+func _advance_land() -> void:
+	var land: Dictionary = s.land
+	if int(land.left) <= 0:
+		return
+	if s.weather == "storm":
+		log_add("Bão làm chậm san lấp: công trường nghỉ một ngày.", "warn")
+		toast.emit("Bão: hoãn thi công cải tạo")
+		return
+	land.left = int(land.left) - 1
+	if int(land.left) == 0:
+		land.stage = land.target
+		var Ld: Dictionary = GameData.LAND[int(land.stage)]
+		log_add("Hoàn tất cải tạo %s: %s" % [Ld.short, Ld.done], "good")
+		toast.emit("Hoàn tất cải tạo " + String(Ld.short))
 
 
 # ======================= Hành động của người chơi =======================
@@ -676,6 +745,9 @@ func upgrade_pad(id: int) -> void:
 	var p: Dictionary = by_id(s.pads, id)
 	if p.is_empty() or p.lvl >= 3 or s.money < GameData.PAD_UP[p.lvl]:
 		return
+	if land_block(int(p.lvl) + 1) != "":
+		toast.emit(land_block(int(p.lvl) + 1))
+		return
 	s.money -= GameData.PAD_UP[p.lvl]
 	p.lvl += 1
 	log_add("Nâng bệ %s lên cấp %d." % [p.name, p.lvl], "good")
@@ -686,6 +758,9 @@ func build_pad() -> void:
 	if launching: return
 	var n: int = s.pads.size()
 	if n >= 3 or s.money < GameData.PAD_NEW[n]:
+		return
+	if land_block(1) != "":
+		toast.emit(land_block(1))
 		return
 	s.money -= GameData.PAD_NEW[n]
 	var id: int = s.next_id
@@ -700,6 +775,9 @@ func upgrade_facility(key: String) -> void:
 	var f: Dictionary = GameData.FAC[key]
 	var lv: int = s.fac[key]
 	if lv >= 3 or s.money < f.cost[lv]:
+		return
+	if land_block(lv + 1) != "":
+		toast.emit(land_block(lv + 1))
 		return
 	s.money -= f.cost[lv]
 	s.fac[key] = lv + 1

@@ -29,6 +29,9 @@ func _run() -> void:
 	await process_frame
 	await process_frame
 	_check(game.s.day == 1, "ván mới bắt đầu ở ngày 1")
+	_check(game.pending_result.get("intro", false), "ván mới hiện thẻ giới thiệu dự án")
+	_check(game.s.land.stage == 0, "bắt đầu ở Lô I (đầm lầy)")
+	game.dismiss_result()
 	_check(game.eval_plan().valid, "kế hoạch phóng đầu tiên hợp lệ")
 
 	# 1) Phóng thật qua hoạt ảnh.
@@ -51,8 +54,30 @@ func _run() -> void:
 		game.next_day()
 	await process_frame
 	_check(game.s.day == 13, "qua 12 ngày")
+	# Cải tạo đất: chưa có Lô II thì chưa xây được; cải tạo xong mới xây.
 	game.s.money = 20000
 	game.s.rep = 50
+	game.build_pad()
+	game.upgrade_facility("shop")
+	_check(game.s.pads.size() == 1 and game.s.fac.shop == 0, "chưa cải tạo Lô II thì chưa xây được")
+	game.start_reclaim()
+	_check(game.s.land.left == 3 and game.s.land.target == 1, "khởi công cải tạo Lô II (3 ngày)")
+	game.start_reclaim()
+	_check(game.s.land.left == 3, "đang thi công thì không khởi công thêm")
+	var guard := 0
+	while game.s.land.stage < 1 and guard < 40:
+		game.s.money = 20000
+		game.next_day()
+		guard += 1
+	_check(game.s.land.stage == 1, "xong Lô II sau %d ngày (bão làm chậm)" % guard)
+	game.start_reclaim()
+	guard = 0
+	while game.s.land.stage < 2 and guard < 60:
+		game.s.money = 20000
+		game.next_day()
+		guard += 1
+	_check(game.s.land.stage == 2, "xong Lô III sau %d ngày" % guard)
+	game.s.money = 20000
 	game.upgrade_pad(1)
 	game.build_pad()
 	for k in ["shop", "wx", "fuel", "asm"]:

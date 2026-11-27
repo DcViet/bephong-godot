@@ -28,6 +28,11 @@ func refresh() -> void:
 	flow.add_child(_stat("TIỀN", Game.fmt(s.money), "Bad" if s.money < 0 else "StatValue", "Chi phí vận hành −%s mỗi ngày" % Game.fmt(net)))
 	flow.add_child(_stat("NỢ", Game.fmt(s.debt), "StatValue", "Lãi 0,25%% mỗi ngày" if s.debt > 0 else "Không nợ"))
 	flow.add_child(_stat("UY TÍN", str(s.rep), "StatValue", "Mở GEO ở 8, Mặt Trăng ở 35"))
+	var land: Dictionary = s.land
+	var lt: String = GameData.LAND[int(land.stage)].short
+	if int(land.left) > 0:
+		lt = "%s » %s · %dn" % [lt, GameData.LAND[int(land.target)].short, int(land.left)]
+	flow.add_child(_stat("ĐẤT", lt, "StatValue", GameData.LAND[int(land.stage)].name))
 	flow.add_child(_weather_chip())
 	var moon := _chip([UIKit.lbl("MẶT TRĂNG", "Key"), UIKit.lbl(Game.moon_text(), "Mono")])
 	moon.tooltip_text = "Cửa sổ phóng tới Mặt Trăng mở theo chu kỳ 7 ngày"
