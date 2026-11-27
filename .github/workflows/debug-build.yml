@@ -51,9 +51,14 @@ jobs:
           mkdir -p build
           godot --headless --path . --export-debug "Windows Desktop" build/BePhong.exe
           ls -la build
+      - name: Export bản web (không thread, chạy được trên GitHub Pages)
+        run: |
+          mkdir -p build/web
+          godot --headless --path . --export-debug "Web" build/web/index.html
+          ls -la build/web
       - name: Đóng gói
         run: |
-          cd build && zip -q ../BePhong-windows-debug.zip *
+          cd build && zip -q ../BePhong-windows-debug.zip BePhong*
           ls -la ../BePhong-windows-debug.zip
       - name: Đăng lên Release "debug-latest"
         if: github.event_name != 'pull_request'
@@ -67,3 +72,15 @@ jobs:
             gh release create debug-latest --prerelease --title "Bản debug mới nhất" --notes "$notes" --target "$GITHUB_SHA"
           fi
           gh release upload debug-latest BePhong-windows-debug.zip --clobber
+      - name: Đăng bản web lên nhánh gh-pages
+        if: github.event_name != 'pull_request'
+        run: |
+          cd build/web
+          touch .nojekyll
+          # Godot đặt tên file theo index.*; GitHub Pages phục vụ index.html là trang chính.
+          git init -q -b gh-pages
+          git config user.name "github-actions"
+          git config user.email "github-actions@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Bản web từ ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}.git" gh-pages
