@@ -3,6 +3,7 @@ extends SceneTree
 ##   godot --headless --path . -s res://tools/smoke_test.gd
 ## Dựng màn hình chính, phóng thật (có hoạt ảnh tua nhanh), qua ngày, mua sắm, rồi mô phỏng nhiều chuyến để xem tỉ lệ.
 
+const SEED := 20261127
 var _fail := 0
 
 
@@ -20,6 +21,8 @@ func _initialize() -> void:
 
 func _run() -> void:
 	var game: Node = root.get_node("Game")
+	# Cố định seed để test lặp lại được: chuyến phóng đầu ngẫu nhiên có thể mất tàu và kết thúc ván.
+	game.rng.seed = SEED
 	game.new_game()
 	var main: Control = load("res://scenes/main.tscn").instantiate()
 	root.add_child(main)
@@ -54,6 +57,7 @@ func _run() -> void:
 	game.build_pad()
 	for k in ["shop", "wx", "fuel", "asm"]:
 		game.upgrade_facility(k)
+	var fleet_before: int = game.s.rockets.size()
 	game.buy_rocket("kestrel")
 	game.repair(game.s.rockets[0].id, "full")
 	game.upgrade_engine(game.s.rockets[0].id)
@@ -63,7 +67,7 @@ func _run() -> void:
 		game.set_tab(t)
 		await process_frame
 		await process_frame
-	_check(game.s.rockets.size() == 2, "mua được tàu thứ hai")
+	_check(game.s.rockets.size() == fleet_before + 1, "mua thêm một tàu (%d → %d)" % [fleet_before, game.s.rockets.size()])
 	_check(game.s.pads.size() == 2 and game.s.pads[0].lvl == 2, "bệ thứ hai và nâng cấp bệ")
 	_check(game.s.fac.shop == 1 and game.s.fac.asm == 1, "nâng công trình")
 
