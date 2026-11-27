@@ -121,6 +121,9 @@ static func build_theme() -> Theme:
 	# Ô thông số nổi trên cảnh (kiểu hộp kem viền mực).
 	t.set_type_variation("Chip", "PanelContainer")
 	t.set_stylebox("panel", "Chip", flat(PANEL, LINE, 2, 12, 11, 5))
+	# Menu nổi cạnh công trình khi chạm vào cảnh.
+	t.set_type_variation("Plaque", "PanelContainer")
+	t.set_stylebox("panel", "Plaque", flat(PANEL, LINE, 3, 14, 12, 10))
 	# Bảng trượt chứa các bảng điều khiển.
 	t.set_type_variation("Sheet", "PanelContainer")
 	t.set_stylebox("panel", "Sheet", flat(PANEL, LINE, 3, 16, 14, 12))

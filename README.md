@@ -11,9 +11,9 @@ Dòng lệnh: `godot --path . ` — kiểm tra không giao diện: `godot --head
 |---|---|
 | `scripts/data.gd` | Dữ liệu tĩnh: tàu, quỹ đạo, công trình, thời tiết (chỉnh cân bằng ở đây) |
 | `scripts/game.gd` | Autoload `Game`: trạng thái, luật, lưu/tải. Không có mã giao diện |
-| `scripts/launch_view.gd` | Cảnh bãi phóng nhìn iso nghiêng toàn màn hình (vẽ bằng canvas 2D, viền mực dày), chạm bệ/công trình/ô trống, hoạt ảnh đếm ngược/bay |
-| `scripts/ui/*.gd` | Theme dựng bằng mã và các bảng: header, hợp đồng, kế hoạch phóng, cột phải |
-| `scripts/main.gd` | Bố cục: cảnh toàn màn hình + thanh trên/dưới nổi + bảng trượt (phải ở landscape, dưới ở portrait), hệ số UI theo màn hình/devicePixelRatio |
+| `scripts/launch_view.gd` | Cảnh đảo nhìn iso nghiêng toàn màn hình kiểu Boom Beach (canvas 2D, viền mực dày): biển nông có bọt sóng, cọ, chạm bệ/công trình/ô trống, hoạt ảnh đếm ngược/bay |
+| `scripts/ui/*.gd` | Theme dựng bằng mã và các bảng: header (ngày/đất/thời tiết bên trái, tiền/nợ/uy tín bên phải), hợp đồng, kế hoạch phóng, cột phải; `world_menu.gd` là menu nổi cạnh công trình |
+| `scripts/main.gd` | Bố cục: cảnh toàn màn hình; HUD hai góc trên, menu dưới trái, PHÓNG / Qua ngày dưới phải (ngang ở màn dọc); chạm công trình hiện menu nổi, chi tiết mở bảng trượt (phải ở landscape, dưới ở portrait); hệ số UI theo màn hình/devicePixelRatio |
 | `tools/smoke_test.gd` | Chạy thử headless |
 
 ## Đất: cải tạo vùng đầm lầy

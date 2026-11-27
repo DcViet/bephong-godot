@@ -1,5 +1,6 @@
 extends Control
-## Cảnh iso toàn màn hình + HUD nổi (thanh trên, thanh dưới) + bảng trượt chứa các bảng điều khiển.
+## Cảnh iso toàn màn hình (kiểu Boom Beach): HUD hai góc trên, menu dưới trái, PHÓNG dưới phải,
+## menu nổi khi chạm công trình, và bảng trượt chứa các bảng điều khiển chi tiết.
 ## Landscape: bảng nằm bên phải. Portrait (điện thoại dọc): bảng trượt từ dưới lên.
 
 var header: HeaderBar
@@ -10,7 +11,9 @@ var right: SidePanel
 
 var _hud: Control
 var _top: VBoxContainer
-var _dock: HFlowContainer
+var _dock: HFlowContainer        # menu dưới trái
+var _actions: BoxContainer       # PHÓNG + Qua ngày, dưới phải (dọc ở màn ngang, ngang ở màn dọc)
+var _wmenu: WorldMenu            # menu nổi cạnh công trình
 var _dock_btns: Dictionary = {}
 var _go_btn: Button
 var _next_btn: Button
@@ -87,13 +90,13 @@ func _build() -> void:
 	header = HeaderBar.new()
 	_top.add_child(header)
 
-	# --- Thanh dưới ---
+	# --- Menu dưới trái ---
 	_dock = UIKit.flow(8, 8)
 	_ignore(_dock)
-	_dock.alignment = FlowContainer.ALIGNMENT_CENTER
-	_dock.set_anchors_preset(Control.PRESET_BOTTOM_WIDE)
+	_dock.alignment = FlowContainer.ALIGNMENT_BEGIN
+	_dock.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	_dock.offset_left = 10
-	_dock.offset_right = -10
+	_dock.offset_right = 400
 	_dock.offset_bottom = -10
 	_dock.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	_hud.add_child(_dock)
@@ -102,12 +105,26 @@ func _build() -> void:
 		b.focus_mode = Control.FOCUS_NONE
 		_dock_btns[d[0]] = b
 		_dock.add_child(b)
+
+	# --- Nút hành động dưới phải (ngón cái phải với tới) ---
+	_actions = BoxContainer.new()
+	_actions.vertical = true
+	_actions.add_theme_constant_override("separation", 8)
+	_ignore(_actions)
+	_actions.set_anchors_preset(Control.PRESET_BOTTOM_RIGHT)
+	_actions.offset_right = -10
+	_actions.offset_bottom = -10
+	_actions.grow_horizontal = Control.GROW_DIRECTION_BEGIN
+	_actions.grow_vertical = Control.GROW_DIRECTION_BEGIN
+	_hud.add_child(_actions)
 	_go_btn = UIKit.btn("PHÓNG", "Ignite", Game.start_launch)
 	_go_btn.focus_mode = Control.FOCUS_NONE
-	_dock.add_child(_go_btn)
+	_go_btn.custom_minimum_size = Vector2(150, 58)
+	_actions.add_child(_go_btn)
 	_next_btn = UIKit.btn("Qua ngày »", "Primary", Game.next_day)
 	_next_btn.focus_mode = Control.FOCUS_NONE
-	_dock.add_child(_next_btn)
+	_next_btn.custom_minimum_size = Vector2(150, 44)
+	_actions.add_child(_next_btn)
 
 	# --- Bảng trượt ---
 	_sheet = PanelContainer.new()
@@ -132,6 +149,12 @@ func _build() -> void:
 	_sheet_page = UIKit.vbox(0)
 	_sheet_page.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	_sheet_scroll.add_child(_sheet_page)
+
+	_wmenu = WorldMenu.new()
+	_wmenu.want_sheet.connect(func(k: String) -> void:
+		_wmenu.close()
+		_open_sheet(k))
+	add_child(_wmenu)
 
 	planner = PlannerPanel.new()
 	left = ContractsPanel.new()
@@ -163,6 +186,7 @@ func _toggle_sheet(key: String) -> void:
 
 
 func _open_sheet(key: String) -> void:
+	_wmenu.close()
 	if key in ["fleet", "grow", "log"]:
 		Game.set_tab(key)
 	_open = key
@@ -199,41 +223,88 @@ func _sync_sheet() -> void:
 	_sheet.visible = true
 
 
-## Chạm vào cảnh: bệ → kế hoạch (chọn bệ đó), công trình / ô trống → bảng Mở rộng.
+## Chạm vào cảnh: trung tâm điều khiển → hợp đồng; bệ / công trình / ô trống / đất → menu nổi cạnh vật đó;
+## chạm khoảng trống → đóng menu nổi.
 func _on_world_tapped(kind: String, key: Variant) -> void:
 	match kind:
-		"pad":
-			Game.select_pad(int(key))
-			_open_sheet("plan")
+		"":
+			_wmenu.close()
 		"contracts":
 			_open_sheet("contracts")
 		_:
-			_open_sheet("grow")
+			if kind == "pad":
+				Game.select_pad(int(key))
+			_open = ""
+			_wmenu.open(kind, key)
+			_refresh()
 
 
 # ---------------- Bố cục ----------------
 
+func _is_portrait() -> bool:
+	return size.x < size.y * 0.95
+
+
+## Chiều cao vùng dưới màn hình bị HUD chiếm. Màn dọc: hai nút hành động nằm ngang phía trên hàng menu.
+func _bottom_h() -> float:
+	if _is_portrait():
+		return _dock.size.y + _actions.size.y + 28.0
+	return maxf(_dock.size.y, _actions.size.y) + 20.0
+
+
 func _process(_delta: float) -> void:
 	var th: float = _top.size.y + 20.0
-	var dh: float = _dock.size.y + 20.0
+	var dh: float = _bottom_h()
 	if absf(th - _last_top) > 0.5 or absf(dh - _last_dock) > 0.5 or size != _last_size:
 		_layout()
+	_place_menu()
+
+
+## Đặt menu nổi phía trên vật được chạm (bệ cao nên nâng lên), kẹp trong màn hình.
+func _place_menu() -> void:
+	if not _wmenu.is_open():
+		return
+	var ap: Variant = view.anchor_pos(_wmenu.kind, _wmenu.key)
+	if ap == null:
+		return
+	var a: Vector2 = ap
+	var lift: float = 125.0 if _wmenu.kind == "pad" else 52.0
+	_wmenu.size = Vector2.ZERO    # co về kích thước tối thiểu (nội dung vừa đổi)
+	var ms: Vector2 = _wmenu.size
+	var x: float = clampf(a.x - ms.x * 0.5, 8.0, maxf(8.0, size.x - ms.x - 8.0))
+	var y: float = a.y - lift - ms.y
+	# Giữa hai cột HUD thì được lên sát mép trên; đè lên một cột thì phải nằm dưới cột đó.
+	var clear_of_hud: bool = x > 280.0 and x + ms.x < size.x - 200.0
+	var top_lim: float = 10.0 if clear_of_hud else _top.size.y + 16.0
+	if y < top_lim:
+		y = a.y + 34.0
+	y = clampf(y, top_lim, maxf(top_lim, size.y - _bottom_h() - ms.y))
+	_wmenu.position = Vector2(x, y)
 
 
 func _layout() -> void:
 	var th: float = _top.size.y + 20.0
-	var dh: float = _dock.size.y + 20.0
+	var dh: float = _bottom_h()
 	_last_top = th
 	_last_dock = dh
 	_last_size = size
-	var portrait: bool = size.x < size.y * 0.95
+	var portrait: bool = _is_portrait()
 	var narrow: bool = size.x < 640.0
 	if narrow != _compact:
 		_compact = narrow
 		header.compact = narrow
 		_mark_dirty()
-	view.top_inset = th
-	view.bottom_inset = dh
+	# Hai góc HUD nằm cạnh cảnh nên màn ngang chỉ cần chừa một phần chiều cao.
+	_actions.vertical = not portrait
+	_actions.move_child(_next_btn, 0 if portrait else 1)
+	if portrait:
+		_dock.offset_right = size.x - 10.0
+		_actions.offset_bottom = -(_dock.size.y + 18.0)
+	else:
+		_dock.offset_right = maxf(140.0, size.x - _actions.get_combined_minimum_size().x - 20.0)
+		_actions.offset_bottom = -10.0
+	view.top_inset = th if portrait else minf(th, 74.0)
+	view.bottom_inset = dh if portrait else dh * 0.6
 	view.side_inset = 0.0
 	if portrait:
 		var sh: float = clampf(size.y * 0.52, 240.0, size.y - th - dh - 60.0)
@@ -275,6 +346,10 @@ func _refresh() -> void:
 	left.refresh()
 	right.refresh()
 	_refresh_dock()
+	if Game.launching:
+		_wmenu.close()
+	else:
+		_wmenu.refresh()
 	_sync_sheet()
 	_sync_result()
 	_hud.visible = not Game.launching

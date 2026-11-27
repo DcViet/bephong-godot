@@ -6,7 +6,7 @@ extends Control
 ## Chạm vào bệ / công trình / ô trống phát `tapped(kind, key)`.
 
 signal finished(desc: Dictionary)
-signal tapped(kind: String, key: Variant)
+signal tapped(kind: String, key: Variant)    # kind = "" khi chạm ra khoảng trống
 
 const TW := 96.0              # bề rộng một ô iso
 const TH := 48.0              # bề cao một ô iso (tỉ lệ 2:1)
@@ -240,6 +240,16 @@ func _gui_input(event: InputEvent) -> void:
 			best = a
 	if not best.is_empty():
 		tapped.emit(best.kind, best.key)
+	else:
+		tapped.emit("", null)
+
+
+## Vị trí màn hình hiện tại của một điểm chạm (menu nổi bám theo khi khung nhìn thu phóng).
+func anchor_pos(kind: String, key: Variant) -> Variant:
+	for a in _anchors:
+		if a.kind == kind and a.key == key:
+			return a.pos
+	return null
 
 
 func _process(delta: float) -> void:
@@ -476,6 +486,34 @@ func _draw_sea(wx: String) -> void:
 		draw_line(Vector2(wx0, wy0), Vector2(wx0 + 26.0, wy0), Color(1, 1, 1, 0.22), 2.0)
 
 
+## Hình chữ nhật bo góc trên lưới → các điểm iso (dùng cho vùng nước nông, bọt sóng).
+func _rrect(r: Rect2, rad: float, n: int = 5) -> PackedVector2Array:
+	var pts := PackedVector2Array()
+	var cs: Array = [Vector2(r.end.x - rad, r.position.y + rad), Vector2(r.end.x - rad, r.end.y - rad), Vector2(r.position.x + rad, r.end.y - rad), Vector2(r.position.x + rad, r.position.y + rad)]
+	var a0: Array = [-PI * 0.5, 0.0, PI * 0.5, PI]
+	for c in 4:
+		var ctr: Vector2 = cs[c]
+		for i in n + 1:
+			var a: float = float(a0[c]) + PI * 0.5 * float(i) / float(n)
+			pts.append(_iso(ctr.x + cos(a) * rad, ctr.y + sin(a) * rad))
+	return pts
+
+
+## Nước nông xanh ngọc quanh đảo + hai vòng bọt sóng vỗ nhẹ (kiểu đảo nhiệt đới).
+func _draw_shallows(land: Rect2) -> void:
+	var halo := _vr.grow(1.7)
+	draw_colored_polygon(_rrect(halo, 1.3), Color(0.78, 0.98, 0.93, 0.26))
+	draw_colored_polygon(_rrect(_vr.grow(1.0), 0.9), Color(0.8, 1.0, 0.94, 0.30))
+	var sw := 0.0 if _reduce_motion else sin(_t * 1.6)
+	var foam := land.grow(0.42)
+	var l1 := _rrect(foam.grow(0.10 + 0.05 * sw), 0.45)
+	l1.append(l1[0])
+	draw_polyline(l1, Color(1, 1, 1, 0.82), 5.0)
+	var l2 := _rrect(foam.grow(0.46 + 0.09 * sin(_t * 1.6 + 1.7 if not _reduce_motion else 0.0)), 0.6)
+	l2.append(l2[0])
+	draw_polyline(l2, Color(1, 1, 1, 0.38), 3.0)
+
+
 func _draw_island() -> void:
 	var ow := _ow()
 	var st := _land_stage()
@@ -489,6 +527,7 @@ func _draw_island() -> void:
 	var y0 := slab.position.y
 	var x1 := slab.end.x
 	var y1 := slab.end.y
+	_draw_shallows(FULL if earth else slab)
 	if earth:
 		# Toàn đảo: bờ đất, viền cát, cỏ.
 		draw_colored_polygon(PackedVector2Array([tp + Vector2(0, 22), r + Vector2(40, 36), b + Vector2(0, 58), l + Vector2(-40, 36)]), Color(0.1, 0.35, 0.45, 0.28))
@@ -498,12 +537,7 @@ func _draw_island() -> void:
 		_poly([_iso(-sand, -sand), _iso(MAP + sand, -sand), _iso(MAP + sand, MAP + sand), _iso(-sand, MAP + sand)], Color.html("#f1de9c"))
 		_poly([tp, r, b, l], Color.html("#8fd150"))
 	else:
-		# Bãi triều nông: phần đất chưa cải tạo, nhạt hơn mặt biển; quanh nền có viền cát.
-		draw_colored_polygon(PackedVector2Array([tp, r, b, l]), Color(0.8, 0.94, 0.86, 0.42))
-		for k in 22:
-			var gx := 0.8 + float((k * 53) % 100) / 100.0 * (MAP - 1.6)
-			var gy := 0.8 + float((k * 37) % 100) / 100.0 * (MAP - 1.6)
-			draw_line(_iso(gx, gy), _iso(gx + 0.5, gy - 0.2), Color(1, 1, 1, 0.45), 2.0)
+		# Quanh nền đất cứng có viền cát; nước nông và bọt sóng vẽ ở _draw_shallows.
 		var e := 0.3
 		_poly([_iso(x0 - e, y0 - e), _iso(x1 + e, y0 - e), _iso(x1 + e, y1 + e), _iso(x0 - e, y1 + e)], Color.html("#f1de9c"))
 	# Nền đất cứng: bãi khởi điểm (4×4) hoặc quảng trường (8×8), nổi lên trên.
@@ -692,6 +726,16 @@ func _build_items() -> void:
 		var eg: Vector2 = e
 		if not _tile_filled(floori(eg.x), floori(eg.y)):
 			_items.append([eg.x + eg.y, _draw_egret.bind(eg)])
+	# Vài cây dừa ven bờ nền đất cứng (Lô I / II) cho có không khí đảo nhiệt đới.
+	if st < 2:
+		var sl := _region(st)
+		var spots: Array = [
+			Vector2(sl.position.x - 0.1, sl.position.y + sl.size.y * 0.55),
+			Vector2(sl.position.x + sl.size.x * 0.42, sl.position.y - 0.1),
+			Vector2(sl.end.x + 0.1, sl.position.y + sl.size.y * 0.28)]
+		for i in spots.size():
+			var pg: Vector2 = spots[i]
+			_items.append([pg.x + pg.y, _draw_palm.bind(_iso(pg.x, pg.y), 0.6 + 0.08 * float(i % 3), float(i) * 1.9)])
 	# Cây xanh dải ngoài: chỉ có sau khi cải tạo xong Lô III.
 	if st >= 2:
 		for f in _flowers:
@@ -793,12 +837,49 @@ func _draw_bush(b: Dictionary) -> void:
 	var k: float = b.k
 	var col: Color = b.col
 	if b.tree:
-		var tk := 1.0 * k
-		# Thân cây
-		_poly([base + Vector2(-8, 0) * tk, base + Vector2(8, 0) * tk, base + Vector2(5, -46) * tk, base + Vector2(-5, -46) * tk], Color.html("#d99c4e"))
-		_foliage(base, [Vector3(0, -78, 34), Vector3(-27, -56, 26), Vector3(27, -58, 27), Vector3(0, -50, 30)], col, tk)
+		_draw_palm(base, k * 1.05, g.x * 1.7 + g.y)
 	else:
 		_foliage(base, [Vector3(0, -14, 17), Vector3(-17, -8, 13), Vector3(17, -9, 14), Vector3(0, -5, 15)], col, k)
+
+
+## Cây dừa: thân cong có viền, tán lá cọ xòe đung đưa nhẹ (nhóm cây ven biển).
+func _draw_palm(base: Vector2, k: float, ph: float) -> void:
+	var ow := _ow()
+	_ell(base + Vector2(0, 3), 26.0 * k, 9.0 * k, Color(0.1, 0.25, 0.2, 0.28))
+	var sway := 0.0 if _reduce_motion else sin(_t * 1.3 + ph) * 3.0
+	var top := base + Vector2((9.0 + sway) * k, -84.0 * k)
+	var trunk := _curve(base, base + Vector2(-9.0 * k, -42.0 * k), top, 10)
+	draw_polyline(trunk, INK, 10.0 * k + ow * 2.0, true)
+	draw_polyline(trunk, Color.html("#d99c4e"), 10.0 * k, true)
+	draw_polyline(trunk, Color.html("#eab86e"), 3.0 * k, true)
+	var leaf := Color.html("#4fb04a")
+	var angs: Array = [-2.75, -2.2, -1.45, -0.7, -0.2, 0.35]
+	for i in angs.size():
+		var a: float = float(angs[i]) + (0.0 if _reduce_motion else sin(_t * 1.6 + ph + float(i)) * 0.05)
+		_palm_frond(top, a, (50.0 if i % 2 == 0 else 42.0) * k, k, leaf if i % 2 == 0 else leaf.lightened(0.14))
+	draw_circle(top + Vector2(-5, 5) * k, 5.0 * k + ow * 0.6, INK)
+	draw_circle(top + Vector2(-5, 5) * k, 5.0 * k, Color.html("#8a5a2b"))
+	draw_circle(top + Vector2(5, 6) * k, 5.0 * k + ow * 0.6, INK)
+	draw_circle(top + Vector2(5, 6) * k, 5.0 * k, Color.html("#8a5a2b"))
+
+
+func _palm_frond(origin: Vector2, a: float, len: float, k: float, col: Color) -> void:
+	var dir := Vector2(cos(a), sin(a))
+	var tip := origin + dir * len + Vector2(0, 17.0 * k)
+	var ctrl := origin + dir * len * 0.55 + Vector2(0, -15.0 * k)
+	var c := _curve(origin, ctrl, tip, 8)
+	var left: Array = []
+	var right: Array = []
+	for i in c.size():
+		var t := float(i) / float(c.size() - 1)
+		var d: Vector2 = (c[mini(i + 1, c.size() - 1)] - c[maxi(i - 1, 0)]).normalized()
+		var nrm := Vector2(-d.y, d.x)
+		var w := lerpf(8.0, 0.8, t) * k
+		left.append(c[i] + nrm * w)
+		right.append(c[i] - nrm * w)
+	right.reverse()
+	left.append_array(right)
+	_poly(left, col)
 
 
 func _draw_flower(g: Vector2) -> void:
@@ -1015,14 +1096,13 @@ func _draw_flight(n: int, rise: float, rx: float, ang: float, rsc: float) -> voi
 func _chip(sp: Vector2, text: String, col: Color = Color(0, 0, 0, 0)) -> void:
 	var fs := 13
 	var tw := _disp.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs).x + 18.0
-	var rc := Rect2(sp.x - tw * 0.5, sp.y - 12.0, tw, 24.0)
+	var rc := Rect2(clampf(sp.x - tw * 0.5, 4.0, maxf(4.0, size.x - tw - 4.0)), sp.y - 12.0, tw, 24.0)
 	draw_style_box(_chip_sb, rc)
 	draw_string(_disp, Vector2(rc.position.x + 9.0, rc.position.y + 17.0), text, HORIZONTAL_ALIGNMENT_LEFT, -1, fs, col if col.a > 0.0 else UIKit.INK)
 
 
 func _draw_labels() -> void:
 	var s: Dictionary = Game.s
-	var money: int = s.money
 	var st: int = int(s.land.stage)
 	for i in s.pads.size():
 		var pad: Dictionary = s.pads[i]
@@ -1041,27 +1121,8 @@ func _draw_labels() -> void:
 		else:
 			var blk: String = Game.reclaim_blocked()
 			var cr := _region(st)
-			_chip(_s(_iso(cr.end.x + 0.35, cr.end.y + 0.35, 0.0)) + Vector2(0, 34), "Mở rộng %s · %s" % [L.short, Game.fmt(L.cost)], UIKit.BAD if blk != "" else UIKit.INK)
-	if _sc < 0.75 or st < 1:
-		return    # cảnh nhỏ / chưa có đất: bỏ nhãn công trình, chạm ô để xem chi tiết
-	for k in ["shop", "wx", "fuel", "asm"]:
-		var lv: int = s.fac[k]
-		var f: Dictionary = GameData.FAC[k]
-		var at: Vector2
-		match k:
-			"shop": at = _iso(SHOP_AT.position.x + SHOP_AT.size.x * 0.5, SHOP_AT.end.y, 0.0)
-			"wx": at = _iso(WX_AT.x, WX_AT.y + 0.4, 0.0)
-			"fuel": at = _iso(FUEL_AT[0].x - 0.2, FUEL_AT[0].y + 1.0, 0.0)
-			_: at = _iso(ASM_AT.position.x + ASM_AT.size.x * 0.5, ASM_AT.end.y, 0.0)
-		if lv == 0:
-			var cost: int = f.cost[0]
-			_chip(_s(at) + Vector2(0, 20), "%s · %s" % [f.name, Game.fmt(cost)], UIKit.BAD if money < cost else UIKit.INK)
-		else:
-			_chip(_s(at) + Vector2(0, 18), "%s · cấp %d/3" % [f.name, lv])
-	if s.pads.size() < 3:
-		var c2: Vector2 = PAD_SLOTS[s.pads.size()]
-		var nc: int = GameData.PAD_NEW[s.pads.size()]
-		_chip(_s(_iso(c2.x + 0.4, c2.y + 0.4, 0.0)) + Vector2(0, 26), "Bệ mới · %s" % Game.fmt(nc), UIKit.BAD if money < nc else UIKit.INK)
+			_chip(_s(_iso(cr.end.x + 0.35, cr.end.y + 0.35, 0.0)) + Vector2(0, 34), "Mở rộng %s" % L.short, UIKit.BAD if blk != "" else UIKit.INK)
+	# Công trình / ô trống: không dán nhãn lên cảnh, chạm vào sẽ hiện menu nổi (tên, cấp, giá).
 
 
 func _draw_clouds(wx: String, a: float) -> void:
