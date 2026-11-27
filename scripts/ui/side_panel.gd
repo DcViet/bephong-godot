@@ -174,7 +174,7 @@ func _grow(box: VBoxContainer) -> void:
 	box.add_child(shop[0])
 
 
-## Thẻ Đất: mô tả vùng đầm lầy, giai đoạn hiện tại, tiến độ và nút cải tạo lô kế tiếp.
+## Thẻ Đất: mô tả hòn đảo đá, giai đoạn hiện tại, tiến độ và nút cải tạo lô kế tiếp.
 func _land_card(box: VBoxContainer) -> void:
 	var land: Dictionary = Game.s.land
 	var st: int = int(land.stage)
@@ -186,7 +186,7 @@ func _land_card(box: VBoxContainer) -> void:
 	head.add_child(UIKit.spacer())
 	head.add_child(UIKit.pill(cur.short, UIKit.ACCENT))
 	cb.add_child(head)
-	cb.add_child(UIKit.lbl("Vùng đầm lầy ven biển: bãi triều, kênh nước mặn, rừng ngập mặn; nền yếu, ngập khi triều lên. Phải san lấp từng lô mới có chỗ xây cảng vũ trụ.", "Muted", true))
+	cb.add_child(UIKit.lbl("Hòn đảo nhiều vách đá, chỉ có một khoảng đất cỏ nhỏ ở giữa. Phải dọn đá, mở rộng từng lô mới có chỗ xây cảng vũ trụ.", "Muted", true))
 	cb.add_child(UIKit.lbl("Hiện tại: " + String(cur.fx), "", true))
 	if int(land.left) > 0:
 		var L: Dictionary = GameData.LAND[int(land.target)]

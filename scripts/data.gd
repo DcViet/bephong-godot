@@ -48,17 +48,17 @@ const FAC: Dictionary = {
 	"asm": {"name": "Nhà lắp ráp", "cost": [500, 1100, 2300], "fx": ["Tàu hồi phục sau chuyến nhanh hơn 1 ngày", "Bệ phóng chuẩn bị lại nhanh hơn 1 ngày", "Thêm −1 ngày cho cả hai (tối thiểu 1 ngày)"]},
 }
 
-## Đất: ba giai đoạn cải tạo vùng đầm lầy ven biển (đồng tâm quanh ô giữa).
+## Đất: ba giai đoạn mở rộng khoảng đất cỏ giữa vách đá ven biển (đồng tâm quanh ô giữa).
 ## cost: chi phí ($k). days: số ngày thi công. rep: uy tín cần có (giấy phép môi trường). fx: được gì.
 const LAND: Array = [
 	{"short": "Lô I", "name": "Bãi khởi điểm", "cost": 0, "days": 0, "rep": 0,
-		"fx": "Nền 4×4 ô đã đầm nén quanh trung tâm điều khiển: chỉ đủ chỗ cho một bệ phóng cấp 1.", "done": ""},
+		"fx": "Khoảng đất cỏ 4×4 ô giữa vách đá, quanh trung tâm điều khiển: chỉ đủ chỗ cho một bệ phóng cấp 1.", "done": ""},
 	{"short": "Lô II", "name": "Quảng trường", "cost": 450, "days": 3, "rep": 0,
-		"fx": "Nền 8×8 ô: xây công trình, bệ phóng thứ hai và thứ ba, nâng bệ và công trình lên cấp 2.",
-		"done": "mặt bằng 8×8 ô đã sẵn sàng, có thể xây công trình và bệ mới."},
+		"fx": "Nền 8×8 ô sau khi dọn đá: xây công trình, bệ phóng thứ hai và thứ ba, nâng bệ và công trình lên cấp 2.",
+		"done": "đã dọn xong mặt bằng 8×8 ô, có thể xây công trình và bệ mới."},
 	{"short": "Lô III", "name": "Vùng ngoài", "cost": 1100, "days": 5, "rep": 8,
-		"fx": "Toàn bộ 12×12 ô, có kênh thoát nước và dải cây xanh: mở cấp 3 cho bệ và công trình (tàu Condor).",
-		"done": "toàn bộ khu đất đã được cải tạo, mở cấp 3 cho bệ và công trình."},
+		"fx": "Toàn bộ 10×10 ô cỏ, có rừng cây và bãi cát phía trước: mở cấp 3 cho bệ và công trình (tàu Condor).",
+		"done": "đã dọn xong toàn bộ khu đất, mở cấp 3 cho bệ và công trình."},
 ]
 
 const PAD_UP: Array = [0, 1200, 3500]

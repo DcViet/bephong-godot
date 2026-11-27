@@ -231,10 +231,10 @@ func new_game() -> void:
 	for i in 4:
 		s.contracts.append(gen_contract(0))
 	s.contracts[0].accepted = true
-	log_add("Cảng vũ trụ mở cửa giữa đầm lầy: một tàu Sparrow cũ, một bệ phóng trên bãi khởi điểm và khoản vay $1.5M.")
-	pending_result = {"good": true, "over": false, "intro": true, "title": "Dự án Bãi Lầy Cửa Sông",
-		"sub": "Vùng đầm lầy ven biển: bãi triều lầy lội, kênh nước mặn và rừng ngập mặn, nền đất yếu và ngập mỗi khi triều lên. Bạn dựng cảng vũ trụ tư nhân ở đây, theo cách các cảng phóng ven biển (như Boca Chica của SpaceX) vẫn làm: bắt đầu từ một mảnh nền đầm nén giữa đầm lầy, phóng kiếm tiền, rồi san lấp dần từng lô.",
-		"lines": [["Địa hình", "Đầm lầy ven biển"], ["Nền sẵn có", "Bãi khởi điểm 4×4 ô"], ["Việc cần làm", "Cải tạo 3 lô đất"], ["Giấy phép", "Lô III cần uy tín 8"]]}
+	log_add("Cảng vũ trụ mở cửa trên đảo đá ven biển: một tàu Sparrow cũ, một bệ phóng trên bãi khởi điểm và khoản vay $1.5M.")
+	pending_result = {"good": true, "over": false, "intro": true, "title": "Dự án Cảng Vách Đá",
+		"sub": "Một hòn đảo ven biển nhiều vách đá, chỉ có một khoảng đất cỏ nhỏ ở giữa. Bạn dựng cảng vũ trụ tư nhân ở đây, theo cách các cảng phóng ven biển (như Boca Chica của SpaceX) vẫn làm: bắt đầu từ mảnh đất trống nhỏ, phóng kiếm tiền, rồi nổ mìn dọn đá, phát quang mở rộng dần từng lô.",
+		"lines": [["Địa hình", "Đảo đá ven biển"], ["Nền sẵn có", "Bãi khởi điểm 4×4 ô"], ["Việc cần làm", "Dọn đá mở 2 lô đất"], ["Giấy phép", "Lô III cần uy tín 8"]]}
 	commit()
 
 
@@ -623,7 +623,7 @@ func next_day() -> void:
 	commit()
 
 
-# ======================= Đất: cải tạo vùng đầm lầy =======================
+# ======================= Đất: dọn đá mở rộng khoảng cỏ =======================
 
 ## Giai đoạn đất tối thiểu để xây / nâng lên cấp `new_level`: cấp 3 cần Lô III, còn lại cần Lô II.
 func land_need(new_level: int) -> int:
@@ -663,7 +663,7 @@ func start_reclaim() -> void:
 	s.land.target = st + 1
 	s.land.left = L.days
 	s.land.total = L.days
-	log_add("Khởi công cải tạo %s: san lấp, đầm nén, đổ móng (%d ngày, %s)." % [L.short, L.days, fmt(-L.cost)], "good")
+	log_add("Khởi công cải tạo %s: nổ mìn dọn đá, san phẳng, phát quang (%d ngày, %s)." % [L.short, L.days, fmt(-L.cost)], "good")
 	toast.emit("Khởi công cải tạo " + L.short)
 	commit()
 
@@ -674,7 +674,7 @@ func _advance_land() -> void:
 	if int(land.left) <= 0:
 		return
 	if s.weather == "storm":
-		log_add("Bão làm chậm san lấp: công trường nghỉ một ngày.", "warn")
+		log_add("Bão làm chậm việc dọn đá: công trường nghỉ một ngày.", "warn")
 		toast.emit("Bão: hoãn thi công cải tạo")
 		return
 	land.left = int(land.left) - 1

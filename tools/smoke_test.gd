@@ -30,7 +30,7 @@ func _run() -> void:
 	await process_frame
 	_check(game.s.day == 1, "ván mới bắt đầu ở ngày 1")
 	_check(game.pending_result.get("intro", false), "ván mới hiện thẻ giới thiệu dự án")
-	_check(game.s.land.stage == 0, "bắt đầu ở Lô I (đầm lầy)")
+	_check(game.s.land.stage == 0, "bắt đầu ở Lô I (đảo đá)")
 	game.dismiss_result()
 	_check(game.eval_plan().valid, "kế hoạch phóng đầu tiên hợp lệ")
 
