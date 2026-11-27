@@ -1,6 +1,6 @@
 class_name ContractsPanel
 extends VBoxContainer
-## Cột trái: hợp đồng đã nhận, bảng hợp đồng mới và các mục tiêu.
+## Bảng Hợp đồng: hợp đồng đã nhận, bảng hợp đồng mới và các mục tiêu.
 
 
 func _init() -> void:
@@ -35,7 +35,7 @@ func _card(c: Dictionary) -> Control:
 	var box: VBoxContainer = pc[1]
 
 	var tags := UIKit.hbox(5)
-	var orbit_col: Color = [Color.html("#7fd0ff"), UIKit.ACCENT, Color.html("#d6c3ff")][c.orbit]
+	var orbit_col: Color = [Color.html("#2f7fc4"), UIKit.ACCENT, Color.html("#8156c4")][c.orbit]
 	tags.add_child(UIKit.pill(O.label, orbit_col))
 	if c.urgent:
 		tags.add_child(UIKit.pill("Gấp", UIKit.IGNITE))
@@ -65,9 +65,7 @@ func _card(c: Dictionary) -> Control:
 
 func _goal(done: bool, text: String) -> Control:
 	var r := UIKit.hbox(8)
-	var i := UIKit.lbl("✓" if done else "○", "Good" if done else "MonoMuted")
-	i.custom_minimum_size.x = 16
-	r.add_child(i)
+	r.add_child(UIKit.dot(UIKit.GOOD if done else UIKit.MUTE, done, 14))
 	r.add_child(UIKit.lbl(text, "" if done else "Muted", true))
 	return r
 

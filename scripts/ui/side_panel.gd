@@ -141,7 +141,7 @@ func _grow(box: VBoxContainer) -> void:
 		var hr := UIKit.hbox(8)
 		hr.add_child(UIKit.lbl(f.name, "H3"))
 		hr.add_child(UIKit.spacer())
-		hr.add_child(UIKit.lbl("●".repeat(lv) + "○".repeat(3 - lv), "Mono"))
+		hr.add_child(UIKit.dots(lv))
 		cb.add_child(hr)
 		var d := ""
 		if lv > 0: d += "Hiện tại: %s. " % f.fx[lv - 1]

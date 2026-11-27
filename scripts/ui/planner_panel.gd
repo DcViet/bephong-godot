@@ -12,10 +12,10 @@ func refresh() -> void:
 
 	var acc: Array = Game.accepted()
 	if acc.is_empty():
-		box.add_child(UIKit.lbl("Chưa có hợp đồng đã nhận. Chọn một hợp đồng ở bảng bên trái rồi bấm \"Nhận hợp đồng\".", "Muted", true))
+		box.add_child(UIKit.lbl("Chưa có hợp đồng đã nhận. Mở bảng Hợp đồng ở thanh dưới rồi bấm \"Nhận hợp đồng\".", "Muted", true))
 		return
 	if s.rockets.is_empty():
-		box.add_child(UIKit.lbl("Không còn tàu. Mua tàu mới ở tab Mở rộng.", "Muted", true))
+		box.add_child(UIKit.lbl("Không còn tàu. Mua tàu mới ở bảng Mở rộng.", "Muted", true))
 		return
 
 	var pl: Dictionary = Game.eval_plan()
@@ -47,9 +47,7 @@ func refresh() -> void:
 	checks.custom_minimum_size.x = 300
 	for x in pl.checks:
 		var line := UIKit.hbox(8)
-		var icon := UIKit.lbl("✓" if x.ok == "ok" else ("✕" if x.ok == "no" else "!"), "Good" if x.ok == "ok" else ("Bad" if x.ok == "no" else "Warn"))
-		icon.custom_minimum_size.x = 16
-		line.add_child(icon)
+		line.add_child(UIKit.dot(UIKit.GOOD if x.ok == "ok" else (UIKit.BAD if x.ok == "no" else UIKit.WARN), true, 14))
 		line.add_child(UIKit.lbl(x.text, "", true))
 		checks.add_child(line)
 	body.add_child(checks)

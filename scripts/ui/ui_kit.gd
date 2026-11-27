@@ -2,23 +2,25 @@ class_name UIKit
 extends RefCounted
 ## Bảng màu, theme (dựng bằng mã) và các hàm tạo control nhỏ dùng chung.
 
-static var BG := Color.html("#0a1017")
-static var PANEL := Color.html("#111a23")
-static var PANEL2 := Color.html("#172330")
-static var LINE := Color.html("#243445")
-static var INK := Color.html("#dce5ef")
-static var MUTE := Color.html("#8394a7")
-static var ACCENT := Color.html("#4fd1c5")
-static var ACCENT_INK := Color.html("#052320")
-static var IGNITE := Color.html("#ff7a45")
-static var WARN := Color.html("#f2b04c")
-static var BAD := Color.html("#ef6b5b")
-static var GOOD := Color.html("#6fd08c")
+# Bảng màu kiểu hoạt hình: nền kem, viền mực đậm dày (cùng ngôn ngữ với cảnh iso).
+static var BG := Color.html("#d9cfae")
+static var PANEL := Color.html("#fbf6e3")
+static var PANEL2 := Color.html("#f0e8cc")
+static var LINE := Color.html("#243230")
+static var INK := Color.html("#1f2d2a")
+static var MUTE := Color.html("#6b6a58")
+static var ACCENT := Color.html("#1fa896")
+static var ACCENT_INK := Color.html("#ffffff")
+static var IGNITE := Color.html("#ff8a3d")
+static var IGNITE_INK := Color.html("#2a1204")
+static var WARN := Color.html("#c97d12")
+static var BAD := Color.html("#d4493b")
+static var GOOD := Color.html("#2f8f4e")
 
 static var _theme: Theme
 
 
-static func flat(bg: Color, border: Color = Color(0, 0, 0, 0), bw: int = 0, radius: int = 4, mh: int = 0, mv: int = 0) -> StyleBoxFlat:
+static func flat(bg: Color, border: Color = Color(0, 0, 0, 0), bw: int = 0, radius: int = 8, mh: int = 0, mv: int = 0) -> StyleBoxFlat:
 	var sb := StyleBoxFlat.new()
 	sb.bg_color = bg
 	sb.border_color = border
@@ -47,11 +49,12 @@ static func _label_var(t: Theme, name: String, color: Color, size: int, font: Fo
 static func _button_var(t: Theme, name: String, base: String, bg: Color, border: Color, fg: Color, hover_border: Color, size: int, font: Font, mh: int, mv: int) -> void:
 	if name != base:
 		t.set_type_variation(name, base)
-	t.set_stylebox("normal", name, flat(bg, border, 1, 4, mh, mv))
-	t.set_stylebox("hover", name, flat(bg.lightened(0.07), hover_border, 1, 4, mh, mv))
-	t.set_stylebox("pressed", name, flat(bg.darkened(0.12), hover_border, 1, 4, mh, mv))
-	t.set_stylebox("disabled", name, flat(bg.darkened(0.04), LINE, 1, 4, mh, mv))
-	var focus := flat(Color(0, 0, 0, 0), ACCENT, 2, 4, mh, mv)
+	var bw: int = 0 if border.a == 0.0 else 2
+	t.set_stylebox("normal", name, flat(bg, border, bw, 8, mh, mv))
+	t.set_stylebox("hover", name, flat(bg.lightened(0.08), hover_border, 2, 8, mh, mv))
+	t.set_stylebox("pressed", name, flat(bg.darkened(0.12), hover_border, 2, 8, mh, mv))
+	t.set_stylebox("disabled", name, flat(bg.darkened(0.04), Color(LINE.r, LINE.g, LINE.b, 0.3), 2, 8, mh, mv))
+	var focus := flat(Color(0, 0, 0, 0), ACCENT, 2, 8, mh, mv)
 	focus.draw_center = false
 	t.set_stylebox("focus", name, focus)
 	t.set_color("font_color", name, fg)
@@ -86,18 +89,22 @@ static func build_theme() -> Theme:
 	_label_var(t, "Bad", BAD, 13, mono)
 	_label_var(t, "Warn", WARN, 13, mono)
 
-	_button_var(t, "Button", "Button", PANEL2, LINE, INK, MUTE, 13, sans, 12, 7)
-	_button_var(t, "OptionButton", "OptionButton", PANEL2, LINE, INK, MUTE, 13, sans, 10, 7)
-	_button_var(t, "Primary", "Button", ACCENT, ACCENT, ACCENT_INK, INK, 13, sans, 14, 8)
-	_button_var(t, "Ignite", "Button", IGNITE, IGNITE, Color.html("#1d0b03"), INK, 17, disp, 30, 12)
-	_button_var(t, "Ghost", "Button", Color(0, 0, 0, 0), LINE, INK, MUTE, 12, sans, 9, 5)
-	_button_var(t, "Small", "Button", PANEL2, LINE, INK, MUTE, 12, sans, 9, 5)
-	_button_var(t, "SmallPrimary", "Button", ACCENT, ACCENT, ACCENT_INK, INK, 12, sans, 10, 5)
-	_button_var(t, "Tab", "Button", PANEL, LINE, MUTE, MUTE, 12, mono, 6, 8)
-	_button_var(t, "TabOn", "Button", PANEL2, ACCENT, ACCENT, ACCENT, 12, mono, 6, 8)
+	_button_var(t, "Button", "Button", PANEL2, LINE, INK, ACCENT, 13, sans, 12, 8)
+	_button_var(t, "OptionButton", "OptionButton", PANEL2, LINE, INK, ACCENT, 13, sans, 10, 8)
+	_button_var(t, "Primary", "Button", ACCENT, LINE, ACCENT_INK, INK, 14, disp, 16, 9)
+	_button_var(t, "Ignite", "Button", IGNITE, LINE, IGNITE_INK, INK, 18, disp, 30, 12)
+	_button_var(t, "Ghost", "Button", Color(0, 0, 0, 0), LINE, INK, ACCENT, 12, sans, 10, 6)
+	_button_var(t, "Small", "Button", PANEL2, LINE, INK, ACCENT, 12, sans, 10, 6)
+	_button_var(t, "SmallPrimary", "Button", ACCENT, LINE, ACCENT_INK, INK, 12, sans, 11, 6)
+	_button_var(t, "Tab", "Button", PANEL2, Color(LINE.r, LINE.g, LINE.b, 0.35), MUTE, ACCENT, 12, mono, 6, 9)
+	_button_var(t, "TabOn", "Button", PANEL, LINE, ACCENT, ACCENT, 12, mono, 6, 9)
+	# Nút đáy màn hình (chạm bằng ngón tay): cao, viền dày.
+	_button_var(t, "Dock", "Button", PANEL, LINE, INK, ACCENT, 14, disp, 14, 11)
+	_button_var(t, "DockOn", "Button", ACCENT, LINE, ACCENT_INK, INK, 14, disp, 14, 11)
+	_button_var(t, "Close", "Button", PANEL2, LINE, INK, BAD, 15, disp, 12, 6)
 
-	t.set_stylebox("panel", "PopupMenu", flat(PANEL2, LINE, 1, 4, 4, 4))
-	t.set_stylebox("hover", "PopupMenu", flat(Color(0.31, 0.82, 0.77, 0.18), Color(0, 0, 0, 0), 0, 3, 4, 3))
+	t.set_stylebox("panel", "PopupMenu", flat(PANEL, LINE, 2, 6, 4, 4))
+	t.set_stylebox("hover", "PopupMenu", flat(Color(0.12, 0.66, 0.59, 0.2), Color(0, 0, 0, 0), 0, 4, 4, 3))
 	t.set_color("font_color", "PopupMenu", INK)
 	t.set_color("font_hover_color", "PopupMenu", INK)
 	t.set_font_size("font_size", "PopupMenu", 13)
@@ -108,29 +115,24 @@ static func build_theme() -> Theme:
 	t.set_color("font_focus_color", "CheckBox", INK)
 	t.set_font_size("font_size", "CheckBox", 13)
 
-	t.set_stylebox("panel", "PanelContainer", flat(PANEL, LINE, 1, 6, 12, 12))
+	t.set_stylebox("panel", "PanelContainer", flat(PANEL2, Color(LINE.r, LINE.g, LINE.b, 0.5), 2, 10, 12, 12))
 	t.set_type_variation("Card", "PanelContainer")
-	t.set_stylebox("panel", "Card", flat(PANEL2, LINE, 1, 5, 10, 10))
-	t.set_type_variation("TopBar", "PanelContainer")
-	t.set_stylebox("panel", "TopBar", flat(PANEL, LINE, 1, 6, 14, 10))
-	t.set_type_variation("SceneBox", "PanelContainer")
-	var sb := flat(PANEL, LINE, 1, 6, 0, 0)
-	sb.content_margin_left = 1
-	sb.content_margin_right = 1
-	sb.content_margin_top = 1
-	sb.content_margin_bottom = 1
-	t.set_stylebox("panel", "SceneBox", sb)
-	t.set_type_variation("SiteBar", "PanelContainer")
-	t.set_stylebox("panel", "SiteBar", flat(PANEL, Color(0, 0, 0, 0), 0, 0, 12, 8))
+	t.set_stylebox("panel", "Card", flat(PANEL, LINE, 2, 10, 10, 10))
+	# Ô thông số nổi trên cảnh (kiểu hộp kem viền mực).
+	t.set_type_variation("Chip", "PanelContainer")
+	t.set_stylebox("panel", "Chip", flat(PANEL, LINE, 2, 12, 11, 5))
+	# Bảng trượt chứa các bảng điều khiển.
+	t.set_type_variation("Sheet", "PanelContainer")
+	t.set_stylebox("panel", "Sheet", flat(PANEL, LINE, 3, 16, 14, 12))
 	t.set_type_variation("ResultCard", "PanelContainer")
-	t.set_stylebox("panel", "ResultCard", flat(PANEL, LINE, 1, 6, 18, 16))
+	t.set_stylebox("panel", "ResultCard", flat(PANEL, LINE, 3, 16, 20, 18))
 
 	for v in ["BarGood", "BarWarn", "BarBad"]:
 		t.set_type_variation(v, "ProgressBar")
-		t.set_stylebox("background", v, flat(BG, LINE, 1, 2))
-	t.set_stylebox("fill", "BarGood", flat(GOOD, Color(0, 0, 0, 0), 0, 2))
-	t.set_stylebox("fill", "BarWarn", flat(WARN, Color(0, 0, 0, 0), 0, 2))
-	t.set_stylebox("fill", "BarBad", flat(BAD, Color(0, 0, 0, 0), 0, 2))
+		t.set_stylebox("background", v, flat(BG, LINE, 2, 4))
+	t.set_stylebox("fill", "BarGood", flat(GOOD, Color(0, 0, 0, 0), 0, 3))
+	t.set_stylebox("fill", "BarWarn", flat(WARN, Color(0, 0, 0, 0), 0, 3))
+	t.set_stylebox("fill", "BarBad", flat(BAD, Color(0, 0, 0, 0), 0, 3))
 	t.set_stylebox("separator", "HSeparator", flat(LINE, Color(0, 0, 0, 0), 0, 0))
 	_theme = t
 	return t
@@ -182,6 +184,7 @@ static func flow(hsep: int = 6, vsep: int = 6) -> HFlowContainer:
 static func spacer() -> Control:
 	var c := Control.new()
 	c.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	c.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return c
 
 
@@ -190,7 +193,7 @@ static func card(border: Color = Color(0, 0, 0, 0)) -> Array:
 	var p := PanelContainer.new()
 	p.theme_type_variation = "Card"
 	if border.a > 0.0:
-		p.add_theme_stylebox_override("panel", flat(PANEL2, border, 1, 5, 10, 10))
+		p.add_theme_stylebox_override("panel", flat(PANEL, border, 3, 10, 10, 10))
 	var box := vbox(7)
 	p.add_child(box)
 	return [p, box]
@@ -198,12 +201,31 @@ static func card(border: Color = Color(0, 0, 0, 0)) -> Array:
 
 static func pill(text: String, color: Color) -> PanelContainer:
 	var p := PanelContainer.new()
-	p.add_theme_stylebox_override("panel", flat(Color(0, 0, 0, 0), color, 1, 3, 6, 2))
+	p.add_theme_stylebox_override("panel", flat(Color(0, 0, 0, 0), color, 2, 6, 6, 1))
 	var l := lbl(text.to_upper(), "Key")
 	l.add_theme_color_override("font_color", color)
 	l.add_theme_font_size_override("font_size", 10)
 	p.add_child(l)
 	return p
+
+
+## Điểm tròn màu (thay cho ký tự ● ○ ✓ ✕ vì font web không có các glyph này).
+static func dot(color: Color, filled: bool = true, diameter: int = 14) -> Control:
+	var p := PanelContainer.new()
+	p.custom_minimum_size = Vector2(diameter, diameter)
+	p.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	p.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var sb := flat(color if filled else Color(0, 0, 0, 0), LINE if filled else color, 2, diameter / 2)
+	p.add_theme_stylebox_override("panel", sb)
+	return p
+
+
+static func dots(level: int, total: int = 3) -> Control:
+	var h := hbox(4)
+	h.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for i in total:
+		h.add_child(dot(ACCENT, i < level, 12))
+	return h
 
 
 static func bar(value: float, height: int = 6) -> ProgressBar:
