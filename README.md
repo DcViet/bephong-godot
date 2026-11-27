@@ -24,3 +24,6 @@ File lưu: `user://bephong.save` (nút "Chơi lại từ đầu" ở cột phả
 ## Bản debug trên GitHub
 Mỗi lần push vào `main`, workflow `Debug build (Windows)` chạy smoke test rồi export bản debug Windows và đăng lên Release `debug-latest` (prerelease, ghi đè mỗi lần). Tải `BePhong-windows-debug.zip`, giải nén rồi chạy `BePhong.exe` (kèm `BePhong.console.exe` để xem log).
 Chạy tay: tab Actions → Debug build (Windows) → Run workflow.
+
+## Chơi trên trình duyệt / điện thoại
+https://dcviet.github.io/bephong-godot/ — bản web (Godot Web, không dùng thread) do cùng workflow đăng lên nhánh `gh-pages`. Lần đầu tải ~38 MB. Lưu ván nằm trong bộ nhớ trình duyệt (IndexedDB), không đồng bộ giữa các thiết bị.
