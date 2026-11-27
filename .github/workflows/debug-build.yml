@@ -1,0 +1,56 @@
+name: Debug build (Windows)
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  GODOT_VERSION: 4.7.2-stable
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài Godot
+        run: |
+          curl -fsSL -o godot.zip "https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+      - name: Import
+        run: godot --headless --path . --import
+      - name: Smoke test
+        run: godot --headless --path . -s res://tools/smoke_test.gd
+
+  export-windows-debug:
+    needs: smoke-test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cài Godot và export template
+        run: |
+          base="https://github.com/godotengine/godot-builds/releases/download/${GODOT_VERSION}"
+          curl -fsSL -o godot.zip "$base/Godot_v${GODOT_VERSION}_linux.x86_64.zip"
+          curl -fsSL -o templates.tpz "$base/Godot_v${GODOT_VERSION}_export_templates.tpz"
+          unzip -q godot.zip
+          mv "Godot_v${GODOT_VERSION}_linux.x86_64" /usr/local/bin/godot
+          chmod +x /usr/local/bin/godot
+          tpl="$HOME/.local/share/godot/export_templates/${GODOT_VERSION/-/.}"
+          mkdir -p "$tpl"
+          unzip -q templates.tpz -d templates_tmp
+          mv templates_tmp/templates/* "$tpl/"
+      - name: Import
+        run: godot --headless --path . --import
+      - name: Export bản debug
+        run: |
+          mkdir -p build
+          godot --headless --path . --export-debug "Windows Desktop" build/BePhong.exe
+          ls -la build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: BePhong-windows-debug
+          path: build/
+          if-no-files-found: error
