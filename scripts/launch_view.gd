@@ -33,7 +33,7 @@ const CORE := Rect2(4, 4, 4, 4)
 const PLAZA := Rect2(2, 2, 8, 8)
 const FULL := Rect2(1, 1, 10, 10)    # vùng cỏ cuối cùng; một vành đá / bãi cát bao quanh
 const RIM := 1.5                     # bề rộng vành đá / bãi cát quanh vùng cỏ (ô lưới)
-const CLIFF_H := 85.0                # độ cao vách núi phía sau (px thế giới)
+const CLIFF_H := 46.0                # chiều cao vách đá ở hai cạnh gần camera (px thế giới)
 
 var desc: Dictionary = {}
 var running: bool = false
@@ -351,7 +351,7 @@ func _draw() -> void:
 	var lx := _iso(vr.position.x, vr.end.y).x
 	var rxe := _iso(vr.end.x, vr.position.y).x
 	var ty := minf(_iso(vr.position.x, vr.position.y).y - 110.0, 60.0)    # chừa chỗ cho tháp và tàu
-	var by := _iso(vr.end.x, vr.end.y).y + 50.0
+	var by := _iso(vr.end.x, vr.end.y).y + 50.0 + CLIFF_H
 	var ww := rxe - lx
 	if size.x < size.y:
 		ww = minf(ww, 780.0)    # màn dọc: cắt bớt hai góc đảo cho đỡ nhỏ
@@ -415,7 +415,7 @@ func _draw_sea(wx: String) -> void:
 
 
 ## Hình chữ nhật bo góc trên lưới → các điểm iso (dùng cho vùng nước nông, bọt sóng).
-func _rrect(r: Rect2, rad: float, n: int = 5) -> PackedVector2Array:
+func _rrect(r: Rect2, rad: float, n: int = 5, z: float = 0.0) -> PackedVector2Array:
 	var pts := PackedVector2Array()
 	var cs: Array = [Vector2(r.end.x - rad, r.position.y + rad), Vector2(r.end.x - rad, r.end.y - rad), Vector2(r.position.x + rad, r.end.y - rad), Vector2(r.position.x + rad, r.position.y + rad)]
 	var a0: Array = [-PI * 0.5, 0.0, PI * 0.5, PI]
@@ -423,21 +423,21 @@ func _rrect(r: Rect2, rad: float, n: int = 5) -> PackedVector2Array:
 		var ctr: Vector2 = cs[c]
 		for i in n + 1:
 			var a: float = float(a0[c]) + PI * 0.5 * float(i) / float(n)
-			pts.append(_iso(ctr.x + cos(a) * rad, ctr.y + sin(a) * rad))
+			pts.append(_iso(ctr.x + cos(a) * rad, ctr.y + sin(a) * rad, z))
 	return pts
 
 
 ## Nước nông xanh ngọc quanh đảo + hai vòng bọt sóng vỗ nhẹ (kiểu đảo nhiệt đới).
-func _draw_shallows(land: Rect2) -> void:
+func _draw_shallows(land: Rect2, z: float = 0.0) -> void:
 	var halo := land.grow(1.7)
-	draw_colored_polygon(_rrect(halo, 1.3), Color(0.78, 0.98, 0.93, 0.2))
-	draw_colored_polygon(_rrect(land.grow(1.0), 0.9), Color(0.8, 1.0, 0.94, 0.30))
+	draw_colored_polygon(_rrect(halo, 1.3, 5, z), Color(0.78, 0.98, 0.93, 0.2))
+	draw_colored_polygon(_rrect(land.grow(1.0), 0.9, 5, z), Color(0.8, 1.0, 0.94, 0.30))
 	var sw := 0.0 if _reduce_motion else sin(_t * 1.6)
 	var foam := land.grow(0.42)
-	var l1 := _rrect(foam.grow(0.10 + 0.05 * sw), 0.45)
+	var l1 := _rrect(foam.grow(0.10 + 0.05 * sw), 0.45, 5, z)
 	l1.append(l1[0])
 	draw_polyline(l1, Color(1, 1, 1, 0.82), 5.0)
-	var l2 := _rrect(foam.grow(0.46 + 0.09 * sin(_t * 1.6 + 1.7 if not _reduce_motion else 0.0)), 0.6)
+	var l2 := _rrect(foam.grow(0.46 + 0.09 * sin(_t * 1.6 + 1.7 if not _reduce_motion else 0.0)), 0.6, 5, z)
 	l2.append(l2[0])
 	draw_polyline(l2, Color(1, 1, 1, 0.38), 3.0)
 
@@ -453,109 +453,94 @@ func _eff_target() -> Rect2:
 	return Rect2(cur.position.lerp(tgt.position, f), cur.size.lerp(tgt.size, f))
 
 
+## Đảo theo phối cảnh: mặt nước và bãi cát nằm thấp (z = −CLIFF_H), vùng cỏ nâng cao hơn; hai cạnh gần camera là vách đá
+## (chân vách ra bãi cát); hai cạnh phía sau chỉ lộ đường viền và vài tảng đá.
 func _draw_island() -> void:
 	var e := _eff
 	var isl := e.grow(RIM)
-	_draw_shallows(isl)
-	var shadow := _rrect(isl.grow(0.3), 0.9)
+	var zw := -CLIFF_H
+	_draw_shallows(isl, zw)
+	var shadow := _rrect(isl.grow(0.3), 0.9, 5, zw)
 	for k in shadow.size():
-		shadow[k] += Vector2(0, 30)
+		shadow[k] += Vector2(0, 12)
 	draw_colored_polygon(shadow, Color(0.1, 0.35, 0.45, 0.22))
+	_draw_beach(isl)
+	_draw_cliffs(e)
 	# Cỏ: một mảng xanh, thêm vài ô sáng hơn cho đỡ phẳng.
-	draw_colored_polygon(PackedVector2Array([_iso(e.position.x, e.position.y), _iso(e.end.x, e.position.y), _iso(e.end.x, e.end.y), _iso(e.position.x, e.end.y)]), Color.html("#7fbf40"))
+	var corners := PackedVector2Array([_iso(e.position.x, e.position.y), _iso(e.end.x, e.position.y), _iso(e.end.x, e.end.y), _iso(e.position.x, e.end.y)])
+	draw_colored_polygon(corners, Color.html("#7fbf40"))
 	var lite := Color.html("#8bc948")
 	for i in range(floori(e.position.x), ceili(e.end.x)):
 		for j in range(floori(e.position.y), ceili(e.end.y)):
 			if (i * 73 + j * 151) % 4 == 0 and e.encloses(Rect2(float(i), float(j), 1.0, 1.0)):
 				_flat_tile(float(i), float(j), 1.0, 1.0, lite)
-	_draw_beach(e, isl)
-	_draw_cliffs(e, isl)
+	var ln := PackedVector2Array(corners)
+	ln.append(corners[0])
+	draw_polyline(ln, INK, _ow())
+	_draw_rim_rocks(e)
 
 
-## Bãi cát phía trước (hai cạnh gần camera): thấp, sáng, không che mặt bằng.
-func _draw_beach(e: Rect2, isl: Rect2) -> void:
-	var top := Color.html("#f1de9c")
-	var lc := Color.html("#cdb67e")
-	var rc := Color.html("#dfca8f")
-	_box(e.position.x, e.end.y, e.size.x, isl.end.y - e.end.y, 5.0, top, lc, rc)
-	_box(e.end.x, e.position.y, isl.end.x - e.end.x, isl.end.y - e.position.y, 5.0, top, lc, rc)
+## Bãi cát thấp bao quanh đảo (ở mực nước); phần phía sau bị vùng cỏ che đi.
+func _draw_beach(isl: Rect2) -> void:
+	var pts := _rrect(isl, 0.9, 5, -CLIFF_H)
+	draw_colored_polygon(pts, Color.html("#f1de9c"))
+	var ln := PackedVector2Array(pts)
+	ln.append(pts[0])
+	draw_polyline(ln, INK, _ow())
 
 
-## Độ cao sống núi tại điểm thứ k: cao ở phía sau, thấp dần về phía trước (u = 0 → 1) rồi hạ thành bãi cát.
-func _ridge_h(u: float, k: int) -> float:
-	var taper := 1.0 - smoothstep(0.5, 1.0, u)
-	var n := 0.78 + 0.44 * float((k * 37 + 11) % 13) / 13.0
-	return 6.0 + CLIFF_H * taper * n
-
-
-## Vách núi liền khối ở hai cạnh phía sau: mặt vách quay vào bãi cỏ, mặt đỉnh nằm sau lưng, sống núi lởm chởm có tảng tròn.
-## Mỗi mặt vẽ bằng các dải tứ giác lồi (một đa giác lớn có thể tự cắt nên không tô được).
-func _draw_cliffs(e: Rect2, isl: Rect2) -> void:
-	var wall := Color.html("#7d5a42")
-	var wall2 := Color.html("#8e6a4d")
-	var top := Color.html("#a88360")
-	var boulder := Color.html("#b8926c")
-	# --- Cạnh sau-trái: x ∈ [isl.x0, e.x0], chạy dọc theo y ---
-	var nl := maxi(2, int(ceil((isl.end.y - isl.position.y) / 0.5)))
-	var span := maxf(0.1, isl.end.y - e.position.y)
-	var in_t := PackedVector2Array()
-	var out_t := PackedVector2Array()
-	var base := PackedVector2Array()
-	var mid := PackedVector2Array()
-	var face_t := PackedVector2Array()
-	for k in nl + 1:
-		var y := isl.position.y + (isl.end.y - isl.position.y) * float(k) / float(nl)
-		var h := _ridge_h(clampf((y - e.position.y) / span, 0.0, 1.0), k)
-		var it := _iso(e.position.x, y, h)
-		in_t.append(it)
-		out_t.append(_iso(isl.position.x, y, h))
-		if y >= e.position.y - 0.01:
-			base.append(_iso(e.position.x, y, 0.0))
-			mid.append(_iso(e.position.x, y, h * 0.5))
-			face_t.append(it)
-	_strip(out_t, in_t, top)
-	_strip(base, face_t, wall)
-	draw_polyline(mid, Color(0, 0, 0, 0.22), 2.0)
-	_edge(out_t, in_t)
-	_edge(base, face_t)
-	for k in nl + 1:
-		_boulder(in_t[k] + Vector2(-5, 2), 8.0 + float((k * 7) % 5) * 1.8, boulder, float(k))
-	# --- Cạnh sau-phải: y ∈ [isl.y0, e.y0], chạy dọc theo x ---
-	var nr := maxi(2, int(ceil((isl.end.x - e.position.x) / 0.5)))
-	var span2 := maxf(0.1, isl.end.x - e.position.x)
-	var in_t2 := PackedVector2Array()
-	var out_t2 := PackedVector2Array()
-	var base2 := PackedVector2Array()
-	var mid2 := PackedVector2Array()
-	for k in nr + 1:
-		var x := e.position.x + span2 * float(k) / float(nr)
-		var h2 := _ridge_h(clampf((x - e.position.x) / span2, 0.0, 1.0), k + 5)
-		in_t2.append(_iso(x, e.position.y, h2))
-		out_t2.append(_iso(x, isl.position.y, h2))
-		base2.append(_iso(x, e.position.y, 0.0))
-		mid2.append(_iso(x, e.position.y, h2 * 0.5))
-	_strip(out_t2, in_t2, top)
-	_strip(base2, in_t2, wall2)
-	draw_polyline(mid2, Color(0, 0, 0, 0.22), 2.0)
-	_edge(out_t2, in_t2)
-	_edge(base2, in_t2)
-	for k in range(1, nr + 1):
-		_boulder(in_t2[k] + Vector2(5, 2), 8.0 + float((k * 5) % 5) * 1.8, boulder, float(k))
-
-
-## Dải tứ giác giữa hai đường a và b (cùng số điểm).
-func _strip(a: PackedVector2Array, b: PackedVector2Array, col: Color) -> void:
-	for k in a.size() - 1:
-		draw_colored_polygon(PackedVector2Array([a[k], a[k + 1], b[k + 1], b[k]]), col)
-
-
-## Viền mực quanh một dải: hai cạnh dài và hai đầu.
-func _edge(a: PackedVector2Array, b: PackedVector2Array) -> void:
+## Vách đá thấp ở hai cạnh gần camera: mép cỏ ở độ cao 0, chân vách chạm bãi cát (z = −CLIFF_H).
+## Cạnh y = e.end.y quay mặt về +gy (trái-dưới); cạnh x = e.end.x quay mặt về +gx (phải-dưới, tối hơn).
+func _draw_cliffs(e: Rect2) -> void:
+	var zb := -CLIFF_H
 	var ow := _ow()
-	draw_polyline(a, INK, ow)
-	draw_polyline(b, INK, ow)
-	draw_line(a[0], b[0], INK, ow)
-	draw_line(a[a.size() - 1], b[b.size() - 1], INK, ow)
+	var face_a := Color.html("#9a7653")
+	var face_b := Color.html("#7d5a42")
+	var lip := Color.html("#5f9b2f")
+	var strata := Color(0, 0, 0, 0.2)
+	var na := maxi(2, int(ceil(e.size.x / 0.5)))
+	for k in na:
+		var x0 := e.position.x + e.size.x * float(k) / float(na)
+		var x1 := e.position.x + e.size.x * float(k + 1) / float(na)
+		var col := face_a.lerp(face_a.darkened(0.14), float((k * 37) % 5) / 4.0)
+		draw_colored_polygon(PackedVector2Array([_iso(x0, e.end.y, 0.0), _iso(x1, e.end.y, 0.0), _iso(x1, e.end.y, zb), _iso(x0, e.end.y, zb)]), col)
+		draw_colored_polygon(PackedVector2Array([_iso(x0, e.end.y, 0.0), _iso(x1, e.end.y, 0.0), _iso(x1, e.end.y, -8.0), _iso(x0, e.end.y, -8.0)]), lip)
+	draw_line(_iso(e.position.x, e.end.y, zb * 0.45), _iso(e.end.x, e.end.y, zb * 0.45), strata, 2.0)
+	var nb := maxi(2, int(ceil(e.size.y / 0.5)))
+	for k in nb:
+		var y0 := e.position.y + e.size.y * float(k) / float(nb)
+		var y1 := e.position.y + e.size.y * float(k + 1) / float(nb)
+		var col2 := face_b.lerp(face_b.darkened(0.14), float((k * 29) % 5) / 4.0)
+		draw_colored_polygon(PackedVector2Array([_iso(e.end.x, y0, 0.0), _iso(e.end.x, y1, 0.0), _iso(e.end.x, y1, zb), _iso(e.end.x, y0, zb)]), col2)
+		draw_colored_polygon(PackedVector2Array([_iso(e.end.x, y0, 0.0), _iso(e.end.x, y1, 0.0), _iso(e.end.x, y1, -8.0), _iso(e.end.x, y0, -8.0)]), lip.darkened(0.12))
+	draw_line(_iso(e.end.x, e.position.y, zb * 0.45), _iso(e.end.x, e.end.y, zb * 0.45), strata, 2.0)
+	# Nét viền: đáy và đỉnh hai mặt, hai đầu và đường góc trước.
+	draw_polyline(PackedVector2Array([_iso(e.position.x, e.end.y, 0.0), _iso(e.end.x, e.end.y, 0.0), _iso(e.end.x, e.position.y, 0.0)]), INK, ow)
+	draw_polyline(PackedVector2Array([_iso(e.position.x, e.end.y, zb), _iso(e.end.x, e.end.y, zb), _iso(e.end.x, e.position.y, zb)]), INK, ow)
+	draw_line(_iso(e.position.x, e.end.y, 0.0), _iso(e.position.x, e.end.y, zb), INK, ow)
+	draw_line(_iso(e.end.x, e.end.y, 0.0), _iso(e.end.x, e.end.y, zb), INK, ow)
+	draw_line(_iso(e.end.x, e.position.y, 0.0), _iso(e.end.x, e.position.y, zb), INK, ow)
+	# Tảng đá ở chân vách và trên mép cỏ.
+	var rock := Color.html("#b8926c")
+	for k in range(1, na, 2):
+		var xx := e.position.x + e.size.x * float(k) / float(na)
+		_boulder(_iso(xx, e.end.y + 0.16, zb) + Vector2(0, -5), 7.0 + float((k * 7) % 4) * 2.0, rock, float(k))
+	for k in range(1, nb, 2):
+		var yy := e.position.y + e.size.y * float(k) / float(nb)
+		_boulder(_iso(e.end.x + 0.16, yy, zb) + Vector2(0, -5), 7.0 + float((k * 5) % 4) * 2.0, rock, float(k) + 3.0)
+
+
+## Tảng đá dọc hai mép phía sau của vùng cỏ (phía sau không thấy vách, chỉ thấy bờ núi chạy ngang).
+func _draw_rim_rocks(e: Rect2) -> void:
+	var rock := Color.html("#b8926c")
+	var nl := maxi(2, int(ceil(e.size.y / 0.9)))
+	for k in nl + 1:
+		var y := e.position.y + e.size.y * float(k) / float(nl)
+		_boulder(_iso(e.position.x - 0.05, y, 0.0) + Vector2(0, -4), 8.0 + float((k * 7) % 4) * 2.2, rock, float(k))
+	var nr := maxi(2, int(ceil(e.size.x / 0.9)))
+	for k in range(1, nr + 1):
+		var x := e.position.x + e.size.x * float(k) / float(nr)
+		_boulder(_iso(x, e.position.y - 0.05, 0.0) + Vector2(0, -4), 8.0 + float((k * 5) % 4) * 2.2, rock, float(k) + 5.0)
 
 
 ## Tảng đá tròn có viền trên sống núi (làm bờ núi bớt vuông vức).
@@ -600,9 +585,9 @@ func _draw_land_marker(cr: Rect2) -> void:
 	draw_rect(Rect2(c.x - 2, c.y - 9, 4, 18), INK)
 
 
-## Chỗ máy ủi đứng: mép phải của vùng cỏ đang nở ra.
+## Chỗ máy ủi đứng: sát mép phải của vùng cỏ đang nở ra (trên cỏ, không lơ lửng trên vách).
 func _digger_at() -> Vector2:
-	return Vector2(_eff.end.x + 0.1, _eff.position.y + _eff.size.y * 0.55)
+	return Vector2(_eff.end.x - 1.0, _eff.position.y + _eff.size.y * 0.55)
 
 
 ## Máy ủi vàng + bụi bốc lên, hoạt động trong lúc cải tạo.
@@ -621,7 +606,7 @@ func _draw_digger() -> void:
 		draw_circle(pp, 9.0 + ph * 12.0, Color(0.78, 0.68, 0.52, 0.55 * (1.0 - ph)))
 
 
-## Cọ trên bãi cát phía trước đảo.
+## Cọ trên bãi cát ở chân vách phía trước (bãi nằm thấp hơn mép cỏ CLIFF_H).
 func _add_palms() -> void:
 	var e := _eff
 	var pts: Array = []
@@ -630,7 +615,7 @@ func _add_palms() -> void:
 		pts.append(Vector2(e.position.x + e.size.x * f, e.end.y + RIM * 0.55))
 	for i in pts.size():
 		var pg: Vector2 = pts[i]
-		_items.append([pg.x + pg.y, _draw_palm.bind(_iso(pg.x, pg.y), 0.58 + 0.08 * float(i % 3), float(i) * 1.9)])
+		_items.append([pg.x + pg.y, _draw_palm.bind(_iso(pg.x, pg.y, -CLIFF_H), 0.58 + 0.08 * float(i % 3), float(i) * 1.9)])
 
 
 # ---------- ô cát dưới công trình ----------
