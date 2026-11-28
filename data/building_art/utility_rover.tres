@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_aiy73"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/utility_rover.png" id="2_st3om"]
+
+[resource]
+script = ExtResource("1_aiy73")
+texture = ExtResource("2_st3om")
+art_scale = 0.6343612334801763
+anchor = Vector2(113.5, 185.16667)

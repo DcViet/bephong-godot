@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_2kv15"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/forklift.png" id="2_rmpeu"]
+
+[resource]
+script = ExtResource("1_2kv15")
+texture = ExtResource("2_rmpeu")
+art_scale = 0.35910224438902744
+anchor = Vector2(200.5, 152.16667)

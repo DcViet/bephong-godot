@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/utility_rover.tres" id="1_kpgvm"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_s8fr3"]
+
+[resource]
+script = ExtResource("2_s8fr3")
+id = &"utility_rover"
+display_name = "Xe tự hành"
+description = "Xe đa dụng chạy quanh bãi phóng."
+category = &"vehicle"
+footprint = Vector2i(1, 1)
+art = ExtResource("1_kpgvm")
+build_cost = 120
+build_time = 4.0
+upgrade_costs = PackedInt32Array()
+upgrade_times = PackedFloat32Array()
+level_stats = Array[Dictionary]([{
+"speed": 1.0
+}])

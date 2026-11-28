@@ -1,0 +1,98 @@
+[
+  {
+    "name": "launch_pad",
+    "file": "launch_pad.png",
+    "width": 302,
+    "height": 280
+  },
+  {
+    "name": "control_tower",
+    "file": "control_tower.png",
+    "width": 408,
+    "height": 272
+  },
+  {
+    "name": "hangar",
+    "file": "hangar.png",
+    "width": 408,
+    "height": 280
+  },
+  {
+    "name": "research_lab",
+    "file": "research_lab.png",
+    "width": 408,
+    "height": 280
+  },
+  {
+    "name": "fuel_depot",
+    "file": "fuel_depot.png",
+    "width": 358,
+    "height": 239
+  },
+  {
+    "name": "communications_center",
+    "file": "communications_center.png",
+    "width": 270,
+    "height": 280
+  },
+  {
+    "name": "cargo_hub",
+    "file": "cargo_hub.png",
+    "width": 359,
+    "height": 260
+  },
+  {
+    "name": "workshop",
+    "file": "workshop.png",
+    "width": 326,
+    "height": 280
+  },
+  {
+    "name": "power_plant",
+    "file": "power_plant.png",
+    "width": 359,
+    "height": 251
+  },
+  {
+    "name": "operations_center",
+    "file": "operations_center.png",
+    "width": 300,
+    "height": 277
+  },
+  {
+    "name": "storage_hangar",
+    "file": "storage_hangar.png",
+    "width": 386,
+    "height": 280
+  },
+  {
+    "name": "defense_turret",
+    "file": "defense_turret.png",
+    "width": 287,
+    "height": 240
+  },
+  {
+    "name": "space_shuttle",
+    "file": "space_shuttle.png",
+    "width": 316,
+    "height": 242
+  },
+  {
+    "name": "utility_rover",
+    "file": "utility_rover.png",
+    "width": 227,
+    "height": 241
+  },
+  {
+    "name": "communications_satellite",
+    "file": "communications_satellite.png",
+    "width": 385,
+    "height": 255
+  },
+  {
+    "name": "forklift",
+    "file": "forklift.png",
+    "width": 401,
+    "height": 241
+  }
+]

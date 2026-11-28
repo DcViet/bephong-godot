@@ -24,6 +24,8 @@ jobs:
         run: godot --headless --path . --import
       - name: Smoke test
         run: godot --headless --path . -s res://tools/smoke_test.gd
+      - name: Test hệ thống xây dựng
+        run: godot --headless --path . -s res://tools/building_test.gd
 
   export-windows-debug:
     needs: smoke-test

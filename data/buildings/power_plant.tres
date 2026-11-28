@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/power_plant.tres" id="1_m5pql"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_eertq"]
+
+[resource]
+script = ExtResource("2_eertq")
+id = &"power_plant"
+display_name = "Nhà máy điện"
+description = "Cấp điện cho toàn bãi phóng."
+category = &"industry"
+footprint = Vector2i(3, 3)
+art = ExtResource("1_m5pql")
+max_level = 3
+build_cost = 800
+build_time = 12.0
+upgrade_costs = PackedInt32Array(1300, 2600)
+upgrade_times = PackedFloat32Array(14, 20)
+level_stats = Array[Dictionary]([{
+"power_mw": 10
+}, {
+"power_mw": 22
+}, {
+"power_mw": 40
+}])

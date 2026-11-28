@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/workshop.tres" id="1_5qac7"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_du7kb"]
+
+[resource]
+script = ExtResource("2_du7kb")
+id = &"workshop"
+display_name = "Xưởng sửa chữa"
+description = "Sửa tàu sau chuyến phóng, giảm chi phí sửa."
+category = &"industry"
+game_link = &"shop"
+footprint = Vector2i(3, 2)
+art = ExtResource("1_5qac7")
+max_level = 3
+build_cost = 350
+build_time = 8.0
+upgrade_costs = PackedInt32Array(800, 1700)
+upgrade_times = PackedFloat32Array(10, 16)
+level_stats = Array[Dictionary]([{
+"repair_discount": 0.15
+}, {
+"repair_discount": 0.3
+}, {
+"repair_discount": 0.45
+}])

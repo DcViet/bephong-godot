@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/defense_turret.tres" id="1_qrhpq"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_qqsqk"]
+
+[resource]
+script = ExtResource("2_qqsqk")
+id = &"defense_turret"
+display_name = "Tháp phòng thủ"
+description = "Bảo vệ bãi phóng khỏi mối đe dọa."
+category = &"defense"
+art = ExtResource("1_qrhpq")
+max_level = 3
+build_cost = 500
+build_time = 8.0
+upgrade_costs = PackedInt32Array(900, 1700)
+upgrade_times = PackedFloat32Array(10, 14)
+level_stats = Array[Dictionary]([{
+"damage": 10
+}, {
+"damage": 22
+}, {
+"damage": 40
+}])

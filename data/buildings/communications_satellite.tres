@@ -1,0 +1,18 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/communications_satellite.tres" id="1_bb057"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_uj27t"]
+
+[resource]
+script = ExtResource("2_uj27t")
+id = &"communications_satellite"
+display_name = "Vệ tinh thông tin"
+description = "Mô hình vệ tinh trưng bày trên bệ."
+category = &"space"
+art = ExtResource("1_bb057")
+build_cost = 1000
+upgrade_costs = PackedInt32Array()
+upgrade_times = PackedFloat32Array()
+level_stats = Array[Dictionary]([{
+"coverage": 1.0
+}])

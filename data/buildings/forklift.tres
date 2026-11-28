@@ -1,0 +1,20 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/forklift.tres" id="1_dt4ta"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_ueln7"]
+
+[resource]
+script = ExtResource("2_ueln7")
+id = &"forklift"
+display_name = "Xe nâng"
+description = "Chuyển hàng trong kho và bãi."
+category = &"vehicle"
+footprint = Vector2i(1, 1)
+art = ExtResource("1_dt4ta")
+build_cost = 80
+build_time = 3.0
+upgrade_costs = PackedInt32Array()
+upgrade_times = PackedFloat32Array()
+level_stats = Array[Dictionary]([{
+"load_t": 2.0
+}])

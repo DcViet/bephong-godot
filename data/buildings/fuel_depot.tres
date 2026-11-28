@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/fuel_depot.tres" id="1_prjsc"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_dlafg"]
+
+[resource]
+script = ExtResource("2_dlafg")
+id = &"fuel_depot"
+display_name = "Kho nhiên liệu"
+description = "Chứa nhiên liệu, giảm tiền mua nhiên liệu."
+category = &"logistics"
+game_link = &"fuel"
+footprint = Vector2i(3, 2)
+art = ExtResource("1_prjsc")
+max_level = 3
+build_cost = 400
+build_time = 8.0
+upgrade_costs = PackedInt32Array(900, 1900)
+upgrade_times = PackedFloat32Array(10, 16)
+level_stats = Array[Dictionary]([{
+"fuel_discount": 0.08
+}, {
+"fuel_discount": 0.16
+}, {
+"fuel_discount": 0.24
+}])

@@ -1,0 +1,23 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/operations_center.tres" id="1_pxipt"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_plyj3"]
+
+[resource]
+script = ExtResource("2_plyj3")
+id = &"operations_center"
+display_name = "Trung tâm vận hành"
+description = "Quản lý nhân sự và lịch vận hành."
+footprint = Vector2i(3, 2)
+art = ExtResource("1_pxipt")
+max_level = 3
+build_cost = 650
+upgrade_costs = PackedInt32Array(1000, 2000)
+upgrade_times = PackedFloat32Array(12, 18)
+level_stats = Array[Dictionary]([{
+"staff": 6
+}, {
+"staff": 12
+}, {
+"staff": 20
+}])

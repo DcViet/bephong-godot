@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_l0b7b"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/hangar.png" id="2_m4yrp"]
+
+[resource]
+script = ExtResource("1_l0b7b")
+texture = ExtResource("2_m4yrp")
+art_scale = 0.7764705882352941
+anchor = Vector2(204, 174.27272)

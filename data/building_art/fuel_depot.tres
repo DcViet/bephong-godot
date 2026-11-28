@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_4rplt"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/fuel_depot.png" id="2_06fqs"]
+
+[resource]
+script = ExtResource("1_4rplt")
+texture = ExtResource("2_06fqs")
+art_scale = 0.770949720670391
+anchor = Vector2(179, 148.17392)

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_ar5wb"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/cargo_hub.png" id="2_jfvgt"]
+
+[resource]
+script = ExtResource("1_ar5wb")
+texture = ExtResource("2_jfvgt")
+art_scale = 0.7688022284122563
+anchor = Vector2(179.5, 168.95653)

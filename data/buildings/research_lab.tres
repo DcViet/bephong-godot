@@ -1,0 +1,25 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/research_lab.tres" id="1_hltl1"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_c2soj"]
+
+[resource]
+script = ExtResource("2_c2soj")
+id = &"research_lab"
+display_name = "Phòng thí nghiệm"
+description = "Nghiên cứu công nghệ mới cho tàu và động cơ."
+category = &"industry"
+footprint = Vector2i(3, 3)
+art = ExtResource("1_hltl1")
+max_level = 3
+build_cost = 900
+build_time = 14.0
+upgrade_costs = PackedInt32Array(1400, 2800)
+upgrade_times = PackedFloat32Array(16, 24)
+level_stats = Array[Dictionary]([{
+"research_points": 1
+}, {
+"research_points": 2
+}, {
+"research_points": 4
+}])

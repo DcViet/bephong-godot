@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/communications_center.tres" id="1_bk2qd"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_f652s"]
+
+[resource]
+script = ExtResource("2_f652s")
+id = &"communications_center"
+display_name = "Trạm thông tin"
+description = "Thu phát tín hiệu, dự báo thời tiết chính xác hơn."
+game_link = &"wx"
+art = ExtResource("1_bk2qd")
+max_level = 3
+build_cost = 300
+build_time = 7.0
+upgrade_costs = PackedInt32Array(700, 1500)
+upgrade_times = PackedFloat32Array(10, 14)
+level_stats = Array[Dictionary]([{
+"forecast_accuracy": 0.75
+}, {
+"forecast_accuracy": 0.88
+}, {
+"forecast_accuracy": 0.97
+}])

@@ -1,0 +1,26 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/launch_pad.tres" id="1_58khj"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_v3tog"]
+
+[resource]
+script = ExtResource("2_v3tog")
+id = &"launch_pad"
+display_name = "Bệ phóng"
+description = "Giàn phóng và tên lửa. Cấp cao hơn phóng được tàu nặng hơn."
+category = &"launch"
+game_link = &"pad"
+footprint = Vector2i(3, 3)
+art = ExtResource("1_58khj")
+max_level = 3
+build_cost = 1200
+build_time = 12.0
+upgrade_costs = PackedInt32Array(1200, 3500)
+upgrade_times = PackedFloat32Array(10, 16)
+level_stats = Array[Dictionary]([{
+"payload_t": 2.5
+}, {
+"payload_t": 6.0
+}, {
+"payload_t": 12.0
+}])

@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_xe7sj"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/communications_satellite.png" id="2_kiu25"]
+
+[resource]
+script = ExtResource("1_xe7sj")
+texture = ExtResource("2_kiu25")
+art_scale = 0.5984415584415583
+anchor = Vector2(192.5, 115.791664)

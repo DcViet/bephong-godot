@@ -48,6 +48,13 @@ func _ready() -> void:
 	_refresh()
 
 
+## Phím F9: mở sân thử hệ thống xây dựng (công trình dựng bằng sprite).
+func _unhandled_key_input(event: InputEvent) -> void:
+	var k := event as InputEventKey
+	if k != null and k.pressed and not k.echo and k.keycode == KEY_F9:
+		get_tree().change_scene_to_file("res://scenes/building_sandbox.tscn")
+
+
 ## Chọn hệ số phóng UI theo kích thước thật (tính cả devicePixelRatio của điện thoại)
 ## để chữ luôn đọc được: màn nhỏ giữ 1 px logic = 1 px CSS, màn lớn phóng tới 1,5×.
 func _apply_ui_scale() -> void:

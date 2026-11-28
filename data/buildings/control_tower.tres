@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="BuildingDef" format=3]
+
+[ext_resource type="Resource" path="res://data/building_art/control_tower.tres" id="1_j5aq3"]
+[ext_resource type="Script" path="res://scripts/building/building_def.gd" id="2_rarn6"]
+
+[resource]
+script = ExtResource("2_rarn6")
+id = &"control_tower"
+display_name = "Trung tâm điều khiển"
+description = "Điều phối các chuyến phóng và hợp đồng."
+game_link = &"ctrl"
+art = ExtResource("1_j5aq3")
+max_level = 3
+build_cost = 600
+build_time = 9.0
+upgrade_costs = PackedInt32Array(900, 1800)
+upgrade_times = PackedFloat32Array(12, 18)
+level_stats = Array[Dictionary]([{
+"contracts": 2
+}, {
+"contracts": 3
+}, {
+"contracts": 4
+}])

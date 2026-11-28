@@ -1,0 +1,10 @@
+[gd_resource type="Resource" script_class="BuildingArt" format=3]
+
+[ext_resource type="Script" path="res://scripts/building/building_art.gd" id="1_hvdc7"]
+[ext_resource type="Texture2D" path="res://assets/spaceport/space_shuttle.png" id="2_oo37l"]
+
+[resource]
+script = ExtResource("1_hvdc7")
+texture = ExtResource("2_oo37l")
+art_scale = 0.9113924050632911
+anchor = Vector2(158, 145.16667)
